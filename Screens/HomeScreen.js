@@ -13,6 +13,7 @@ export default class HomeScreen extends React.Component {
 
         this.state = {
             mapCenter: {lng: 175.2908138, lat: -37.7906929},
+            mapZoomLevel: 13,
             coordinates: [
                     {id: "1", lng: 175.2908138, lat: -37.7906929},
                     {id: "2", lng: 175.28, lat: -37.78},
@@ -26,6 +27,7 @@ export default class HomeScreen extends React.Component {
 
         this.finishRenderMap = this.finishRenderMap.bind(this);
         this.searchPlaces = this.searchPlaces.bind(this);
+        this.setCenterToResultItem = this.setCenterToResultItem.bind(this);
     }
 
     componentDidMount() {
@@ -70,26 +72,36 @@ export default class HomeScreen extends React.Component {
     }
 
     searchPlaces(query) {
-        if (query.length > 0) {
-            fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/' + query + '.json?access_token=' + accessToken)
-                .then((response) => response.json())
-                .then((responseJson) => {
-                    this.setState({
-                        searchQuery: query,
-                        searchResult: responseJson.features
-                    }, function () {
-                        // console.log(this.state.searchResult);
+        this.setState({searchQuery: query}, function() {
+            if (query.length > 0) {
+                fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/' + query + '.json?access_token=' + accessToken)
+                    .then((response) => response.json())
+                    .then((responseJson) => {
+                        this.setState({
+                            searchResult: responseJson.features
+                        }, function () {
+                            console.log(this.state.searchResult);
+                        });
+                    })
+                    .catch((error) => {
+                        console.error(error);
                     });
-                })
-                .catch((error) => {
-                    console.error(error);
+            } else {
+                this.setState({
+                    searchResult: []
                 });
-        } else {
-            this.setState({
-                searchQuery: query,
-                searchResult: []
-            });
-        }
+            }
+        });
+    }
+
+    setCenterToResultItem(lng, lat) {
+        this.setState({
+            search: false,
+            searchQuery: "",
+            searchResult: [],
+            mapCenter: {lng: lng, lat: lat},
+            mapZoomLevel: 11
+        });
     }
 
     render() {
@@ -99,7 +111,7 @@ export default class HomeScreen extends React.Component {
                     <MapboxGL.MapView
                         style={styles.map}
                         logoEnabled={false}
-                        zoomLevel={13}
+                        zoomLevel={this.state.mapZoomLevel}
                         centerCoordinate={[this.state.mapCenter.lng, this.state.mapCenter.lat]}
                         showUserLocation={true}
                         onDidFinishRenderingMapFully={this.finishRenderMap}
@@ -121,12 +133,16 @@ export default class HomeScreen extends React.Component {
                         <TextInput style={[styles.textInput, {display: this.state.search ? 'flex' : 'none', position: this.state.search ? 'absolute': 'relative'}]}
                                    placeholder="Search Now"
                                    onChangeText={text => this.searchPlaces(text)}
+                                   value={this.state.searchQuery}
                         />
                     </TouchableOpacity>
                     {this.state.searchResult ?
                         <ScrollView style={[styles.placesContainer, {display: this.state.searchResult.length > 0 ? 'flex' : 'none', position: this.state.searchResult.length > 0 ? 'absolute' : 'relative'}]}>
                             {this.state.searchResult.map((item, key) => {
-                                return <TouchableOpacity style={styles.searchResultItem}><Text style={styles.searchResultItemText}>{item.place_name}</Text></TouchableOpacity>;
+                                return  <TouchableOpacity style={styles.searchResultItem}
+                                                          onPress={() => this.setCenterToResultItem(item.center[0], item.center[1])} >
+                                            <Text style={styles.searchResultItemText}>{item.place_name}</Text>
+                                        </TouchableOpacity>;
                             })}
                         </ScrollView> : ''
                     }
@@ -205,11 +221,12 @@ const styles = StyleSheet.create({
         top: 110,
         height: 120,
         backgroundColor: '#DCDCDC',
-        opacity: 0.95,
         color: '#707070'
     },
     searchResultItem: {
-        padding: 10,
+        margin: 10,
+        marginTop: 0,
+        paddingBottom: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#c7c7c7'
     },
