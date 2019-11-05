@@ -3,6 +3,7 @@ import {StyleSheet, Image, View, ScrollView, TouchableOpacity, Text, TextInput} 
 import MapboxGL from "@mapbox/react-native-mapbox-gl";
 import {PermissionsAndroid} from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
+import { StackActions, NavigationActions } from 'react-navigation';
 const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 MapboxGL.setAccessToken(accessToken);
 
@@ -80,7 +81,7 @@ export default class HomeScreen extends React.Component {
                         this.setState({
                             searchResult: responseJson.features
                         }, function () {
-                            console.log(this.state.searchResult);
+                            // console.log(this.state.searchResult);
                         });
                     })
                     .catch((error) => {
@@ -147,7 +148,8 @@ export default class HomeScreen extends React.Component {
                         </ScrollView> : ''
                     }
 
-                    <TouchableOpacity style={[styles.icon, styles.playIcon]}>
+                    <TouchableOpacity style={[styles.icon, styles.playIcon]}
+                                      onPress={() => this.props.navigation.navigate('Play')}>
                         <Image source={require('../assets/images/Play.png')}
                                style={styles.image} />
                     </TouchableOpacity>
