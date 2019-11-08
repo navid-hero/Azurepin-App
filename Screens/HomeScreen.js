@@ -3,7 +3,7 @@ import {StyleSheet, Image, View, ScrollView, TouchableOpacity, Text, TextInput} 
 import MapboxGL from "@mapbox/react-native-mapbox-gl";
 import {PermissionsAndroid} from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
-import { StackActions, NavigationActions } from 'react-navigation';
+
 const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 MapboxGL.setAccessToken(accessToken);
 
@@ -128,15 +128,21 @@ export default class HomeScreen extends React.Component {
                                style={[styles.image, {display: this.state.search ? 'none' : 'flex'}]} />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.searchOpenIcon, {display: this.state.search ? 'flex' : 'none'}]}>
-                        <Image source={require('../assets/images/Searchbar-open.png')}
-                               style={[styles.image, {display: this.state.search ? 'flex' : 'none'}]} />
-                        <TextInput style={[styles.textInput, {display: this.state.search ? 'flex' : 'none', position: this.state.search ? 'absolute': 'relative'}]}
-                                   placeholder="Search Now"
-                                   onChangeText={text => this.searchPlaces(text)}
-                                   value={this.state.searchQuery}
-                        />
-                    </TouchableOpacity>
+                    {this.state.search ?
+                        <View style={styles.searchOpenIcon}>
+                            <Image source={require('../assets/images/Searchbar-close.png')}
+                                   style={[styles.image, {width: 57, height: 57}]}/>
+                            <TextInput
+                                style={[styles.textInput, {position: this.state.search ? 'absolute' : 'relative'}]}
+                                placeholder="New Search"
+                                onChangeText={text => this.searchPlaces(text)}
+                                value={this.state.searchQuery}
+                            />
+                            <Image source={require('../assets/images/Blue-Location.png')}
+                                   style={{width: 20, height: 19, marginRight: 10}}/>
+                        </View> : <View></View>
+                    }
+
                     {this.state.searchResult ?
                         <ScrollView style={[styles.placesContainer, {display: this.state.searchResult.length > 0 ? 'flex' : 'none', position: this.state.searchResult.length > 0 ? 'absolute' : 'relative'}]}>
                             {this.state.searchResult.map((item, key) => {
@@ -193,7 +199,12 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 35,
         right: 35,
-        top: 50
+        top: 50,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#DCDCDC',
+        borderRadius: 50,
     },
     playIcon: {
         left: 35,

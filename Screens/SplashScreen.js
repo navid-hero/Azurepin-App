@@ -14,7 +14,7 @@ export default class splashScreen extends React.Component {
 
     componentDidMount() {
         // const {navigate} = this.props.navigation;
-        setTimeout(() => { this.props.navigation.dispatch(resetAction) }, 5000);
+        setTimeout(() => { this.props.navigation.dispatch(resetAction) }, 10000);
     }
     render() {
         return (
@@ -39,6 +39,7 @@ const styles = StyleSheet.create({
     bottom: {
         flex: 1,
         justifyContent: 'flex-end',
+        alignItems: 'center',
         marginBottom: 80
     }
 });

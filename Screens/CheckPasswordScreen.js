@@ -20,7 +20,7 @@ export default class CheckPasswordScreen extends React.Component {
                         <Text style={styles.text}>Enter the code to verify this device.</Text>
                     </View>
                     <View style={styles.buttonContainer}>
-                        <TextInput placeholder="AZ-XXXXX" style={styles.textInput}/>
+                        <TextInput placeholder="AZ-XXXXX" style={styles.textInput} keyboardType="numeric" />
                         <TouchableOpacity
                             style={styles.submitButton}
                             onPress={() => this.props.navigation.dispatch(resetAction)}

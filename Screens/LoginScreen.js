@@ -25,7 +25,10 @@ export default class LoginScreen extends React.Component {
                             <Text style={styles.text}>for a secure login.</Text>
                         </View>
                         <View style={styles.buttonContainer}>
-                            <TextInput style={styles.textInput} placeholder="+XX | XXXXX" />
+                            <View style={styles.textInput}>
+                                <TextInput placeholder="+XX" maxLength={2} keyboardType="numeric" style={{borderRightWidth: 1, borderRightColor: '#707070', color: '#707070', padding: 8, width: 70, textAlign: 'center'}} />
+                                <TextInput placeholder="XXXXX" keyboardType="numeric" style={{padding: 8, color: '#707070', width: 100, textAlign: 'center'}}/>
+                            </View >
                             <TouchableOpacity
                                 style={styles.submitButton}
                                 onPress={() => this.props.navigation.dispatch(resetAction)}
@@ -55,12 +58,13 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-start'
     },
     textInput: {
-        textAlign: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
         backgroundColor: '#DCDCDC',
-        color: '#707070',
         width: 170,
         borderRadius: 50,
-        padding: 15
+        padding: 5
     },
     submitButton: {
         padding:10,
