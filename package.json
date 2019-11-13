@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@mapbox/react-native-mapbox-gl": "https://github.com/nitaliano/react-native-mapbox-gl/tarball/master",
+    "@react-native-community/netinfo": "^4.6.0",
     "react": "16.9.0",
     "react-native": "0.61.2",
     "react-native-actionsheet": "^2.4.2",

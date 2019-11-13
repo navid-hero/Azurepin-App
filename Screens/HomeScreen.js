@@ -1,8 +1,9 @@
 import React from 'react';
-import {StyleSheet, Image, View, ScrollView, TouchableOpacity, Text, TextInput} from "react-native";
+import {Alert, StyleSheet, Image, View, ScrollView, TouchableOpacity, Text, TextInput} from "react-native";
 import MapboxGL from "@mapbox/react-native-mapbox-gl";
 import {PermissionsAndroid} from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
+import NetInfo from "@react-native-community/netinfo";
 
 const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 MapboxGL.setAccessToken(accessToken);
@@ -16,11 +17,11 @@ export default class HomeScreen extends React.Component {
             mapCenter: {lng: 175.2908138, lat: -37.7906929},
             mapZoomLevel: 13,
             coordinates: [
-                    {id: "1", lng: 175.2908138, lat: -37.7906929},
-                    {id: "2", lng: 175.28, lat: -37.78},
-                    {id: "3", lng: 175.28, lat: -37.8},
-                    {id: "4", lng: 175.3, lat: -37.8}
-                ],
+                {id: "1", lng: 175.2908138, lat: -37.7906929},
+                {id: "2", lng: 175.28, lat: -37.78},
+                {id: "3", lng: 175.28, lat: -37.8},
+                {id: "4", lng: 175.3, lat: -37.8}
+            ],
             search: false,
             searchQuery: "",
             searchResult: [],
@@ -33,6 +34,14 @@ export default class HomeScreen extends React.Component {
 
     componentDidMount() {
         MapboxGL.setTelemetryEnabled(false);
+        NetInfo.fetch().then(state => {
+            // console.log("Connection type", state.type);
+            // console.log("Is connected?", state.isConnected);
+            if (!state.isConnected)
+                Alert.alert("Connection Error!", "You are connected to the internet, application may not work correctly.");
+        });
+        if (!this.requestLocationPermission())
+            Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
     }
 
     async requestLocationPermission() {
@@ -54,22 +63,29 @@ export default class HomeScreen extends React.Component {
     }
 
     finishRenderMap() {
-        if (this.requestLocationPermission()) {
-            Geolocation.getCurrentPosition(
-                (position) => {
-                    this.setState({
-                        mapCenter: {
-                            lng: position.coords.longitude,
-                            lat: position.coords.latitude
-                        }
-                    });
-                },
-                (error) => {
-                    console.log(error.code, error.message);
-                },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-            );
-        }
+        if (this.requestLocationPermission())
+            this.gotoCurrentLocation();
+        else
+            Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
+    }
+
+    gotoCurrentLocation = () => {
+        Geolocation.getCurrentPosition(
+            (position) => {
+                this.setState({
+                    mapCenter: {
+                        lng: position.coords.longitude,
+                        lat: position.coords.latitude
+                    }
+                });
+            },
+            (error) => {
+                // console.log(error.code, error.message);
+                if (error.code === 5) // Location settings are not satisfied.
+                    Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        );
     }
 
     searchPlaces(query) {
@@ -118,7 +134,9 @@ export default class HomeScreen extends React.Component {
                         onDidFinishRenderingMapFully={this.finishRenderMap}
                     >
                         {this.state.coordinates.map((item, key) => {
-                            return <MapboxGL.PointAnnotation id={item.id} coordinate={[item.lng, item.lat]} />;
+                            return <MapboxGL.PointAnnotation key={key}
+                                                             id={item.id}
+                                                             coordinate={[item.lng, item.lat]} />;
                         })}
                     </MapboxGL.MapView>
 
@@ -130,16 +148,20 @@ export default class HomeScreen extends React.Component {
 
                     {this.state.search ?
                         <View style={styles.searchOpenIcon}>
-                            <Image source={require('../assets/images/Searchbar-close.png')}
-                                   style={[styles.image, {width: 57, height: 57}]}/>
+                            <TouchableOpacity onPress={() => {this.setState({search: false})}}>
+                                <Image source={require('../assets/images/Searchbar-close.png')}
+                                       style={[styles.image, {width: 57, height: 57}]}/>
+                            </TouchableOpacity>
                             <TextInput
                                 style={[styles.textInput, {position: this.state.search ? 'absolute' : 'relative'}]}
                                 placeholder="New Search"
                                 onChangeText={text => this.searchPlaces(text)}
                                 value={this.state.searchQuery}
                             />
-                            <Image source={require('../assets/images/Blue-Location.png')}
-                                   style={{width: 20, height: 19, marginRight: 10}}/>
+                            <TouchableOpacity onPress={() => {this.gotoCurrentLocation();}}>
+                                <Image source={require('../assets/images/Blue-Location.png')}
+                                       style={{width: 20, height: 19, marginRight: 10}}/>
+                            </TouchableOpacity>
                         </View> : <View></View>
                     }
 
@@ -148,8 +170,8 @@ export default class HomeScreen extends React.Component {
                             {this.state.searchResult.map((item, key) => {
                                 return  <TouchableOpacity style={styles.searchResultItem}
                                                           onPress={() => this.setCenterToResultItem(item.center[0], item.center[1])} >
-                                            <Text style={styles.searchResultItemText}>{item.place_name}</Text>
-                                        </TouchableOpacity>;
+                                    <Text style={styles.searchResultItemText}>{item.place_name}</Text>
+                                </TouchableOpacity>;
                             })}
                         </ScrollView> : ''
                     }
@@ -160,7 +182,8 @@ export default class HomeScreen extends React.Component {
                                style={styles.image} />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.icon, styles.pinIcon]}>
+                    <TouchableOpacity style={[styles.icon, styles.pinIcon]}
+                                      onPress={() => this.props.navigation.navigate('DropPin')}>
                         <Image source={require('../assets/images/Pin_+.png')}
                                style={styles.image} />
                     </TouchableOpacity>

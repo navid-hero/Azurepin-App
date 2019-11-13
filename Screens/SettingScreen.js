@@ -6,7 +6,7 @@ export default class SettingScreen extends React.Component {
         super(props);
 
         this.state = {
-            active: 'setting',
+            active: 'notification',
             notifications: [
                     {title: 'GooOoooOoooOoooAL', subtitle: 'FEBRUARY 22, 2019 5:32 PM', location: 'Manchester, UK', rate: 3, active: true},
                     {title: 'Was a Foul!', subtitle: 'FEBRUARY 22, 2019 5:33 PM', location: 'Manchester, UK', rate: 2, active: true},

@@ -5,6 +5,7 @@ import SplashScreen from "./Screens/SplashScreen";
 import LoginScreen from "./Screens/LoginScreen";
 import CheckPasswordScreen from "./Screens/CheckPasswordScreen";
 import HomeScreen from "./Screens/HomeScreen";
+import DropPinScreen from "./Screens/DropPinScreen";
 import PlayScreen from "./Screens/PlayScreen";
 import PlayHalfScreen from "./Screens/PlayHalfScreen";
 import DetailScreen from "./Screens/DetailScreen";
@@ -16,6 +17,7 @@ const MainNavigator = createStackNavigator({
     Login: {screen: LoginScreen, navigationOptions: {headerShown: false}},
     CheckPassword: {screen: CheckPasswordScreen, navigationOptions: {headerShown: false}},
     Home: {screen: HomeScreen, navigationOptions: {headerShown: false}},
+    DropPin: {screen: DropPinScreen, navigationOptions: {headerShown: false}},
     Play: {screen: PlayScreen, navigationOptions: ({navigation}) => ({header: <CustomHeader/>})},
     PlayHalf: {screen: PlayHalfScreen, navigationOptions: ({navigation}) => ({header: null})},
     Detail: {screen: DetailScreen, navigationOptions: ({navigation}) => ({header: null})},
