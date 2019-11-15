@@ -14,7 +14,7 @@ export default class splashScreen extends React.Component {
 
     componentDidMount() {
         // const {navigate} = this.props.navigation;
-        setTimeout(() => { this.props.navigation.dispatch(resetAction) }, 10000);
+        setTimeout(() => { this.props.navigation.dispatch(resetAction) }, 3000);
     }
     render() {
         return (
