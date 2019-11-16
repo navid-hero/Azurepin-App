@@ -24,7 +24,7 @@ export default class DropPinScreen extends React.Component {
             indeterminate: false,
             refreshIntervalId: 0,
             start: "0:00",
-            end: "-1:00",
+            end: "1:00",
         };
     }
     componentWillUnmount() {
@@ -249,7 +249,7 @@ export default class DropPinScreen extends React.Component {
                         <ProgressBar progress={this.state.videoTime} width={null} height={5} unfilledColor="#E3E3E3" color="#035BDA" borderWidth={0} borderRadius={5} />
                         <View style={{flexDirection: 'row', justifyContent:'space-between'}}>
                             <Text style={{fontSize: 10}}>{this.state.start}</Text>
-                            <Text style={{fontSize: 10}}>{this.state.end}</Text>
+                            <Text style={{fontSize: 10}}>-{this.state.end}</Text>
                         </View>
                         <TouchableOpacity style={{alignSelf: 'center'}} onPress={() => this.recordVideo()}>
                             <Image source={this.state.recording === "start" ? require('../assets/images/Droppin.png') : (this.state.recording === "recording" ? require('../assets/images/Stop-Recording.png') : require('../assets/images/Pin_+.png'))}
