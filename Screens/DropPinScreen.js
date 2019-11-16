@@ -91,20 +91,41 @@ export default class DropPinScreen extends React.Component {
     }
 
     animate() {
-        let videoTime = 0;
-        let start = 0;
-        let end = 60;
-        this.setState({ videoTime }, function() {
-            var refreshIntervalId = setInterval(() => {
-                videoTime += 0.016;
-                start +=1;
-                end -= 1;
-                if (videoTime > 1) {
-                    videoTime = 1;
-                }
+        let startInt = 0, endInt = 60, videoTime = 0, start = "", end = "";
+        let refreshIntervalId = setInterval(function () {
+            if (endInt > 10)
+                end = "0:" + --endInt;
+            else if (endInt > 0)
+                end = "0:0" + --endInt;
+            else
+                clearInterval(interval);
+
+            if (startInt === 59)
+                start = "1:00";
+            else if (startInt > 8)
+                start = "0:" + ++startInt;
+            else
+                start = "0:0" + ++startInt;
+
+            videoTime += 0.016;
+            if (videoTime < 1)
                 this.setState({ videoTime, refreshIntervalId, start, end });
-            }, 1000);
-        });
+
+        }, 1000);
+        // let videoTime = 0;
+        // let start = 0;
+        // let end = 60;
+        // this.setState({ videoTime }, function() {
+        //     var refreshIntervalId = setInterval(() => {
+        //         videoTime += 0.016;
+        //         start +=1;
+        //         end -= 1;
+        //         if (videoTime > 1) {
+        //             videoTime = 1;
+        //         }
+        //         this.setState({ videoTime, refreshIntervalId, start, end });
+        //     }, 1000);
+        // });
     }
 
     recordVideo = async () => {
