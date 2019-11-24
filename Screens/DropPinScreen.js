@@ -1,5 +1,16 @@
 import React  from 'react';
-import {Alert, Animated, Image, Platform, Text, TextInput, StyleSheet, TouchableOpacity, View} from "react-native";
+import {
+    Alert,
+    Image,
+    Platform,
+    Modal,
+    Text,
+    TextInput,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+    TouchableHighlight
+} from "react-native";
 import { RNCamera } from 'react-native-camera';
 import Video from 'react-native-video';
 import ProgressBar from 'react-native-progress/Bar';
@@ -25,6 +36,7 @@ export default class DropPinScreen extends React.Component {
             refreshIntervalId: 0,
             start: "0:00",
             end: "1:00",
+            modalVisible: false,
         };
     }
     componentWillUnmount() {
@@ -92,13 +104,14 @@ export default class DropPinScreen extends React.Component {
 
     animate() {
         let startInt = 0, endInt = 60, videoTime = 0, start = "", end = "";
+        let data = this;
         let refreshIntervalId = setInterval(function () {
             if (endInt > 10)
                 end = "0:" + --endInt;
             else if (endInt > 0)
                 end = "0:0" + --endInt;
             else
-                clearInterval(interval);
+                clearInterval(refreshIntervalId);
 
             if (startInt === 59)
                 start = "1:00";
@@ -109,7 +122,7 @@ export default class DropPinScreen extends React.Component {
 
             videoTime += 0.016;
             if (videoTime < 1)
-                this.setState({ videoTime, refreshIntervalId, start, end });
+                data.setState({ videoTime, refreshIntervalId, start, end });
 
         }, 1000);
         // let videoTime = 0;
@@ -161,12 +174,52 @@ export default class DropPinScreen extends React.Component {
         this.setState({playBack : !this.state.playBack});
     };
 
+    setModalVisible(visible) {
+        this.setState({modalVisible: visible});
+    }
+
+    onExit = () => {
+        if (this.state.videoToShow.length > 0) {
+            Alert.alert(
+                'Discard Recording?',
+                'If you go back now, you will \n' +
+                'lose your recording. \n' +
+                'You can draft it up to 1 hour.',
+                [
+                    {text: 'Discard', onPress: () => this.props.navigation.goBack(), style: 'destructive'},
+                    {text: 'Draft', onPress: () => {Alert.alert('', 'Your recording has been drafted!', [{text: 'OK', onPress: () => this.props.navigation.pop()},], {cancelable: false},);}},
+                    {text: 'Cancel', onPress: () => console.log('Cancel Pressed'), style: 'cancel'},
+                ],
+                {cancelable: false},
+            );
+        } else {
+            this.props.navigation.goBack();
+        }
+    };
+
     render() {
         const { type, flashMode } = this.state;
         return (
             <View style={{flex:1}}>
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={this.state.modalVisible}
+                    onRequestClose={() => {
+                        Alert.alert('Modal has been closed.');
+                    }}>
+                    <View style={styles.containerTwo}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                this.setModalVisible(false);
+                            }}
+                        >
+                            <Text>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Modal>
                 <View style={{flexDirection:'row', justifyContent: 'space-between', borderBottomColor: '#E3E3E3', borderBottomWidth: 1, margin: 10, paddingBottom: 10}}>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => {this.setModalVisible(true);}}>
                         <Image source={require('../assets/images/Draft.png')}
                                style={{width: 36, height: 36}} />
                     </TouchableOpacity>
@@ -174,7 +227,7 @@ export default class DropPinScreen extends React.Component {
                         <Image source={require('../assets/images/Logo_Text.png')}
                                style={{width: 129, height: 32}} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => {this.props.navigation.goBack();}} style={{marginRight: 10, marginTop: 10}}>
+                    <TouchableOpacity onPress={() => {this.onExit();}} style={{marginRight: 10, marginTop: 10}}>
                         <Image source={require('../assets/images/Cancel.png')}
                                style={{width: 12, height: 12}} />
                     </TouchableOpacity>
@@ -308,5 +361,12 @@ const styles = StyleSheet.create({
         right: 0,
         top: 0,
         bottom: 0
+    },
+    containerTwo: {
+        alignItems: 'center',
+        margin: 100,
+        backgroundColor: 'red',
+        justifyContent: 'center',
+        height: 400,
     }
 });
