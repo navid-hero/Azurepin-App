@@ -220,7 +220,6 @@ export default class DropPinScreen extends React.Component {
 
     render() {
         const { type, flashMode } = this.state;
-        const sintel = require('../assets/gs.mp4');
         return (
             <View style={{flex:1}}>
                 <Modal
