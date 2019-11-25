@@ -6,6 +6,7 @@ import LoginScreen from "./Screens/LoginScreen";
 import CheckPasswordScreen from "./Screens/CheckPasswordScreen";
 import HomeScreen from "./Screens/HomeScreen";
 import DropPinScreen from "./Screens/DropPinScreen";
+import VideoScreen from "./Screens/VideoScreen";
 import PlayScreen from "./Screens/PlayScreen";
 import PlayHalfScreen from "./Screens/PlayHalfScreen";
 import DetailScreen from "./Screens/DetailScreen";

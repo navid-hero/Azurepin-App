@@ -1,6 +1,7 @@
 import React  from 'react';
 import {
     Alert,
+    BackHandler,
     Image,
     Platform,
     Modal,
@@ -37,11 +38,31 @@ export default class DropPinScreen extends React.Component {
             start: "0:00",
             end: "1:00",
             modalVisible: false,
+            drafts: [
+                {id: 1, title: "GooOoooOoooOoooAL", time: "5M"},
+                {id: 2, title: "Was a Foul", time: "10M"},
+                {id: 3, title: "New Zealand", time: "15M"},
+                {id: 4, title: "Azurepin", time: "59M"}
+            ]
         };
     }
-    componentWillUnmount() {
-        // Torch.switchState(false);
+    componentDidMount() {
+        BackHandler.addEventListener(
+            'hardwareBackPress',
+            this.handleBackButtonPressAndroid
+        );
     }
+
+    componentWillUnmount() {
+        BackHandler.removeEventListener(
+            'hardwareBackPress',
+            this.handleBackButtonPressAndroid
+        );
+    }
+
+    handleBackButtonPressAndroid = () => {
+        return this.props.navigation.isFocused();
+    };
     async toggleTorch() {
         const newTorch = this.state.flashMode === RNCamera.Constants.FlashMode.off ? RNCamera.Constants.FlashMode.on : RNCamera.Constants.FlashMode.off;
         this.setState({flashMode: newTorch});
@@ -199,6 +220,7 @@ export default class DropPinScreen extends React.Component {
 
     render() {
         const { type, flashMode } = this.state;
+        const sintel = require('../assets/gs.mp4');
         return (
             <View style={{flex:1}}>
                 <Modal
@@ -206,16 +228,31 @@ export default class DropPinScreen extends React.Component {
                     transparent={true}
                     visible={this.state.modalVisible}
                     onRequestClose={() => {
-                        Alert.alert('Modal has been closed.');
-                    }}>
-                    <View style={styles.containerTwo}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                this.setModalVisible(false);
-                            }}
-                        >
-                            <Text>Close</Text>
-                        </TouchableOpacity>
+                        // Alert.alert('Modal has been closed.');
+                        this.setState({modalVisible:false});
+                    }}
+                >
+                    <View style={styles.containerOne}>
+                        <View style={styles.containerTwo}>
+                            <Text style={styles.modalTitle}>Draft</Text>
+                            <View style={styles.containerThree}>
+                                {this.state.drafts.map((item, key) => {
+                                    return (
+                                        <View style={styles.containerFour} key={key} id={item.id}>
+                                            <View>
+                                                <Text style={{color: '#666666'}}>{item.title}</Text>
+                                                <Text style={{color: '#666666', opacity: 0.8}}>{item.time}</Text>
+                                            </View>
+                                            <View>
+                                                <TouchableOpacity onPress={() => {this.setState({drafts: this.state.drafts.filter(obj => {if (obj.id !== item.id) return obj;})})}}>
+                                                    <Image source={require('../assets/images/Azure-Pin.png')} style={{width: 40, height: 40}}/>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        </View>
                     </View>
                 </Modal>
                 <View style={{flexDirection:'row', justifyContent: 'space-between', borderBottomColor: '#E3E3E3', borderBottomWidth: 1, margin: 10, paddingBottom: 10}}>
@@ -246,25 +283,35 @@ export default class DropPinScreen extends React.Component {
                     {/*<Image source={this.state.video ? require('../assets/images/Pin-Video.png') : require('../assets/images/Audio.png')}*/}
                            {/*style={{width: 330, height: 330, marginTop: 5}}/>*/}
 
+                    <View style={{margin: 5, height: 320}}>
                         {this.state.videoToShow.length > 0 ?
-                            <View>
+                            <View style={{flex: 1, flexDirection: 'column', backgroundColor: 'black'}}>
                                 <Video source={{uri: this.state.videoToShow}}
-                                       ref={(ref) => {this.player = ref}}
-                                       paused={this.state.playBack}
-                                       onEnd={() => {this.setState({playBack: true})}}
-                                       style={{height: 320}} />
+                                         ref={(ref) => {
+                                             this.player = ref
+                                         }}
+                                         paused={this.state.playBack}
+                                         onEnd={() => {
+                                             this.setState({playBack: true})
+                                         }}
+                                       style={{width: '100%', height: '100%'}}
+                                />
                                 <TouchableOpacity style={styles.playContent}
-                                                  onPress={() => {this.togglePlay()}}>
-                                    <Image source={this.state.playBack ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
-                                           style={{height: 62, width: 62}}/>
+                                                  onPress={() => {
+                                                      this.togglePlay()
+                                                  }}>
+                                    <Image
+                                        source={this.state.playBack ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
+                                        style={{height: 62, width: 62}}/>
                                 </TouchableOpacity>
                             </View>
                             :
-                            <View style={{margin: 55}}>
-                                <RNCamera ref={cam => { this.camera = cam; }}
-                                          style={{height: 210}}
+                            <View style={{flex: 1, flexDirection: 'column', backgroundColor: 'black'}}>
+                                <RNCamera ref={cam => {this.camera = cam;}}
+                                          style={{width: '100%', height: '100%'}}
                                           type={type}
                                           flashMode={flashMode}
+                                          ratio="3:3"
                                           androidCameraPermissionOptions={{
                                               title: 'Permission to use camera',
                                               message: 'We need your permission to use your camera',
@@ -280,6 +327,8 @@ export default class DropPinScreen extends React.Component {
                                 />
                             </View>
                         }
+                    </View>
+
                     <View style={{flexDirection:'row', borderRadius: 10, backgroundColor: '#DCDCDC', marginTop: 5, justifyContent: 'space-between', padding: 10}}>
                         <TouchableOpacity disabled={!this.state.video} onPress={() => {this.toggleTorch()}}>
                             <Image source={this.state.video ? require('../assets/images/Path_11.png') : require('../assets/images/Path_12.png')}
@@ -362,11 +411,49 @@ const styles = StyleSheet.create({
         top: 0,
         bottom: 0
     },
+    modalTitle: {
+        color: '#666666',
+        fontSize: 16,
+        fontWeight: 'bold',
+        padding: 10,
+        // borderBottomColor: '#E3E3E3',
+        // borderBottomWidth: 1,
+        alignSelf: 'center'
+    },
+    containerOne: {
+        flex: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.7)'
+    },
     containerTwo: {
-        alignItems: 'center',
-        margin: 100,
-        backgroundColor: 'red',
-        justifyContent: 'center',
-        height: 400,
+        position: 'absolute',
+        top: 150,
+        left: 20,
+        right: 20,
+        bottom: 150,
+        borderRadius: 10,
+        borderColor: '#D8D8D8',
+        borderWidth: 2,
+        backgroundColor: '#F2F2F2',
+        // margin: 10
+        // justifyContent: 'center',
+        // alignItems: 'center',
+    },
+    containerThree: {
+        flex: 1,
+        // padding: 10,
+        // borderBottomWidth: 1,
+        // borderBottomColor: '#D8D8D8',
+        // borderTopWidth: 1,
+        // borderTopColor: '#D8D8D8',
+    },
+    containerFour: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        borderBottomColor: '#D8D8D8',
+        borderBottomWidth: 1,
+        padding: 5,
+        // marginBottom: 5,
+        marginLeft: 15,
+        marginRight: 15,
     }
 });
