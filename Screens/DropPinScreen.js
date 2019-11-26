@@ -63,9 +63,23 @@ export default class DropPinScreen extends React.Component {
     handleBackButtonPressAndroid = () => {
         return this.props.navigation.isFocused();
     };
-    async toggleTorch() {
-        const newTorch = this.state.flashMode === RNCamera.Constants.FlashMode.off ? RNCamera.Constants.FlashMode.on : RNCamera.Constants.FlashMode.off;
-        this.setState({flashMode: newTorch});
+
+    flipCamera = () => {
+        this.setState({
+            type:
+                this.state.type === RNCamera.Constants.Type.back
+                    ? RNCamera.Constants.Type.front
+                    : RNCamera.Constants.Type.back,
+        });
+    };
+
+    toggleTorch = () => {
+        this.setState({
+            flashMode:
+                this.state.flashMode === RNCamera.Constants.FlashMode.off
+                    ? RNCamera.Constants.FlashMode.on
+                    : RNCamera.Constants.FlashMode.off
+        });
 
         // if (Platform.OS === 'ios') {
         //     this.setState({isTorchOn: newTorchState}, function() {
@@ -90,7 +104,7 @@ export default class DropPinScreen extends React.Component {
         //         );
         //     }
         // }
-    }
+    };
 
     // takePicture = async function(camera) {
     //     const options = { quality: 0.5, base64: true };
@@ -112,15 +126,6 @@ export default class DropPinScreen extends React.Component {
     onTakePhoto(photo) {
         // console.log("data:image/png;base64"+photo);
         this.setState({imageToShow: "data:image/png;base64,"+photo});
-    }
-
-    flipCamera = () => {
-        this.setState({
-            type:
-                this.state.type === RNCamera.Constants.Type.back
-                    ? RNCamera.Constants.Type.front
-                    : RNCamera.Constants.Type.back,
-        });
     }
 
     animate() {
@@ -282,49 +287,53 @@ export default class DropPinScreen extends React.Component {
                     {/*<Image source={this.state.video ? require('../assets/images/Pin-Video.png') : require('../assets/images/Audio.png')}*/}
                            {/*style={{width: 330, height: 330, marginTop: 5}}/>*/}
 
-                    <View style={{margin: 5, height: 320}}>
-                        {this.state.videoToShow.length > 0 ?
-                            <View style={{flex: 1, flexDirection: 'column', backgroundColor: 'black'}}>
-                                <Video source={{uri: this.state.videoToShow}}
-                                         ref={(ref) => {
-                                             this.player = ref
-                                         }}
-                                         paused={this.state.playBack}
-                                         onEnd={() => {
-                                             this.setState({playBack: true})
-                                         }}
-                                       style={{width: '100%', height: '100%'}}
-                                />
-                                <TouchableOpacity style={styles.playContent}
-                                                  onPress={() => {
-                                                      this.togglePlay()
-                                                  }}>
-                                    <Image
-                                        source={this.state.playBack ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
-                                        style={{height: 62, width: 62}}/>
-                                </TouchableOpacity>
-                            </View>
+                    <View style={{margin: 5, height: 330}}>
+                        {this.state.audio ?
+                             <Image source={require('../assets/images/Audio.png')}
+                                    style={{marginTop: 5}}/>
                             :
-                            <View style={{flex: 1, flexDirection: 'column', backgroundColor: 'black'}}>
-                                <RNCamera ref={cam => {this.camera = cam;}}
-                                          style={{width: '100%', height: '100%'}}
-                                          type={type}
-                                          flashMode={flashMode}
-                                          ratio="3:3"
-                                          androidCameraPermissionOptions={{
-                                              title: 'Permission to use camera',
-                                              message: 'We need your permission to use your camera',
-                                              buttonPositive: 'Ok',
-                                              buttonNegative: 'Cancel',
-                                          }}
-                                          androidRecordAudioPermissionOptions={{
-                                              title: 'Permission to use audio recording',
-                                              message: 'We need your permission to use your audio',
-                                              buttonPositive: 'Ok',
-                                              buttonNegative: 'Cancel',
-                                          }}
-                                />
-                            </View>
+                            this.state.videoToShow.length > 0 ?
+                                <View style={{flex: 1, flexDirection: 'column', backgroundColor: 'black'}}>
+                                    <Video source={{uri: this.state.videoToShow}}
+                                           ref={(ref) => {
+                                               this.player = ref
+                                           }}
+                                           paused={this.state.playBack}
+                                           onEnd={() => {
+                                               this.setState({playBack: true})
+                                           }}
+                                           style={{width: '100%', height: '100%'}}
+                                    />
+                                    <TouchableOpacity style={styles.playContent}
+                                                      onPress={() => {
+                                                          this.togglePlay()
+                                                      }}>
+                                        <Image
+                                            source={this.state.playBack ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
+                                            style={{height: 62, width: 62}}/>
+                                    </TouchableOpacity>
+                                </View>
+                                :
+                                <View style={{flex: 1, flexDirection: 'column', backgroundColor: 'black'}}>
+                                    <RNCamera ref={cam => {this.camera = cam;}}
+                                              style={{width: '100%', height: '100%'}}
+                                              type={type}
+                                              flashMode={flashMode}
+                                              ratio="3:3"
+                                              androidCameraPermissionOptions={{
+                                                  title: 'Permission to use camera',
+                                                  message: 'We need your permission to use your camera',
+                                                  buttonPositive: 'Ok',
+                                                  buttonNegative: 'Cancel',
+                                              }}
+                                              androidRecordAudioPermissionOptions={{
+                                                  title: 'Permission to use audio recording',
+                                                  message: 'We need your permission to use your audio',
+                                                  buttonPositive: 'Ok',
+                                                  buttonNegative: 'Cancel',
+                                              }}
+                                    />
+                                </View>
                         }
                     </View>
 
