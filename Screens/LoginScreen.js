@@ -1,12 +1,54 @@
 import React from 'react';
-import {Image, Text, View, TextInput, TouchableOpacity, StyleSheet, ScrollView} from "react-native";
+import {Alert, Image, Text, View, TextInput, TouchableOpacity, StyleSheet, ScrollView} from "react-native";
 import { StackActions, NavigationActions } from 'react-navigation';
+import Storage from '../Components/store';
+import Api from '../Components/Api';
+import {Colors} from "../Components/Colors";
+
 const resetAction = StackActions.reset({
     index: 0,
     actions: [NavigationActions.navigate({ routeName: 'CheckPassword' })],
 });
 
+const api = new Api();
+
 export default class LoginScreen extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            email: "",
+            emailValidationFailed: false
+        };
+    }
+
+    onChangeEmail(email) {
+        let emailValidationFailed = true;
+        if (email.length > 0) emailValidationFailed = false;
+        this.setState({email, emailValidationFailed});
+    }
+
+    submitEmail = () => {
+        if (this.state.email.length < 6) {
+            this.setState({emailValidationFailed: true});
+        } else {
+            api.postRequest("User/SubmitEmail", JSON.stringify({Email: this.state.email}))
+                .then((response) => {
+                    console.log("response", response);
+                    if (response.result === "success" || response.result === "duplicate") {
+                        console.log("response.userId", response.userId);
+                        Storage.storeData('userId', response.userId);
+                        this.props.navigation.dispatch(resetAction);
+                    } else {
+                        Alert.alert('Woops!', 'Looks something went wrong!');
+                    }
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+        }
+    }
+
     render() {
         // const {navigate} = this.props.navigation;
         return (
@@ -19,19 +61,21 @@ export default class LoginScreen extends React.Component {
                     <View style={{flex:1}}>
                         <View style={{flex:1, alignItems: 'center'}}>
                             <Text style={styles.text}>
-                                Please enter a <Text style={{fontWeight: 'bold'}}>valid phone number.</Text>
+                                Please enter a <Text style={{fontWeight: 'bold'}}>valid email address.</Text>
                             </Text>
                             <Text style={styles.text}>We will send you a verification code</Text>
                             <Text style={styles.text}>for a secure login.</Text>
                         </View>
                         <View style={styles.buttonContainer}>
-                            <View style={styles.textInput}>
-                                <TextInput placeholder="+XX" maxLength={2} keyboardType="numeric" style={{borderRightWidth: 1, borderRightColor: '#707070', color: '#707070', padding: 8, width: 70, textAlign: 'center'}} />
-                                <TextInput placeholder="XXXXX" keyboardType="numeric" style={{padding: 8, color: '#707070', width: 100, textAlign: 'center'}}/>
+                            <View style={styles.textInputContainer}>
+                                <TextInput placeholder="example@website.com"
+                                           keyboardType="email-address" style={styles.textInput}
+                                           onChangeText={(email) => this.onChangeEmail(email)} />
                             </View >
+                            <Text style={{color: Colors.danger, display: this.state.emailValidationFailed ? 'flex' : 'none'}}>Please enter a valid email address</Text>
                             <TouchableOpacity
                                 style={styles.submitButton}
-                                onPress={() => this.props.navigation.dispatch(resetAction)}
+                                onPress={() => this.submitEmail()}
                             >
                                 <Text style={styles.submitButtonText}>Submit</Text>
                             </TouchableOpacity>
@@ -57,14 +101,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-start'
     },
-    textInput: {
+    textInputContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#DCDCDC',
-        width: 170,
+        width: 250,
         borderRadius: 50,
         padding: 5
+    },
+    textInput: {
+        padding: 8,
+        color: '#707070',
+        textAlign: 'center'
     },
     submitButton: {
         padding:10,

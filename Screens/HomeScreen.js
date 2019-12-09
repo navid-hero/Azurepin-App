@@ -38,7 +38,7 @@ export default class HomeScreen extends React.Component {
             // console.log("Connection type", state.type);
             // console.log("Is connected?", state.isConnected);
             if (!state.isConnected)
-                Alert.alert("Connection Error!", "You are connected to the internet, application may not work correctly.");
+                Alert.alert("Connection Error!", "You are not connected to the internet, application may not work correctly.");
         });
         if (!this.requestLocationPermission())
             Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");

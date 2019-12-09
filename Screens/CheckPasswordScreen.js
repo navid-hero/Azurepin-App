@@ -1,12 +1,46 @@
 import React from 'react';
-import {Image, Text, View, TextInput, TouchableOpacity, StyleSheet} from "react-native";
+import {Alert, Image, Text, View, TextInput, TouchableOpacity, StyleSheet} from "react-native";
 import { StackActions, NavigationActions } from 'react-navigation';
+import Storage from '../Components/store';
+import Api from '../Components/Api';
 const resetAction = StackActions.reset({
     index: 0,
     actions: [NavigationActions.navigate({ routeName: 'Home' })],
 });
 
+const api = new Api();
+
 export default class CheckPasswordScreen extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            code: ""
+        };
+    }
+
+    onChangeCode(code) {
+        this.setState({code});
+    }
+
+    submitCode = () => {
+        Storage.getData('userId').then(value => {
+            console.log("userId", value);
+            api.postRequest("User/SubmitSignupKey", JSON.stringify({UserId: value, Key: this.state.code}))
+                .then((responseJson) => {
+                    if (responseJson.result === "success")
+                        this.props.navigation.dispatch(resetAction);
+                    else
+                        Alert.alert('Woops!', 'Looks something went wrong!');
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            // ToDo: next line should be removed
+            this.props.navigation.dispatch(resetAction);
+        });
+    }
     render() {
         // const {navigate} = this.props.navigation;
         return (
@@ -20,10 +54,16 @@ export default class CheckPasswordScreen extends React.Component {
                         <Text style={styles.text}>Enter the code to verify this device.</Text>
                     </View>
                     <View style={styles.buttonContainer}>
-                        <TextInput placeholder="AZ-XXXXX" style={styles.textInput} keyboardType="numeric" />
+                        <View style={styles.textInputContainer}>
+                            <Text style={{textAlign: 'right', width: 50, color: '#707070'}}>AZ -</Text>
+                            <TextInput placeholder=" XXXXX"
+                                       style={[styles.textInput, {textAlign: 'left', width: 90}]}
+                                       keyboardType="numeric"
+                                       onChangeText={(code) => this.onChangeCode(code)} />
+                        </View>
                         <TouchableOpacity
                             style={styles.submitButton}
-                            onPress={() => this.props.navigation.dispatch(resetAction)}
+                            onPress={() => this.submitCode()}
                         >
                             <Text style={styles.submitButtonText}>Done</Text>
                         </TouchableOpacity>
@@ -45,13 +85,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-start'
     },
-    textInput: {
-        textAlign: 'center',
+    textInputContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
         backgroundColor: '#DCDCDC',
-        color: '#707070',
-        width: 170,
+        width: 180,
         borderRadius: 50,
-        padding: 15
+    },
+    textInput: {
+        color: '#707070',
+        paddingTop: 13
     },
     submitButton: {
         padding:10,
