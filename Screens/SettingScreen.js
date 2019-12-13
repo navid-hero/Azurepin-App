@@ -1,5 +1,6 @@
 import React from 'react';
-import {Image, StyleSheet, Text, TouchableOpacity, View} from "react-native";
+import {AsyncStorage, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View} from "react-native";
+import {Colors} from "../Components/Colors";
 
 export default class SettingScreen extends React.Component {
     constructor(props) {
@@ -18,7 +19,8 @@ export default class SettingScreen extends React.Component {
                 {title: 'New Zealand', subtitle: 'FEBRUARY 22, 2019 7:16 PM', location: 'Hamilton, New Zealand', rate: 5, active: false},
             ],
             ads: [],
-            settings: [{title: 'Help'}, {title: 'Terms and Conditions'}, {title: 'About'}]
+            settings: [{title: 'Help'}, {title: 'Terms and Conditions'}, {title: 'About'}],
+            termsModal: false,
         };
     }
 
@@ -69,17 +71,52 @@ export default class SettingScreen extends React.Component {
         else if (this.state.active === 'ad')
             content = (<Text style={{color: '#666666'}}>Ads</Text>);
         else if (this.state.active === 'setting')
-            content = (this.state.settings.map(function(item, key) {
-                return (
-                    <View key={key} style={{flexDirection: 'row', margin: 10, justifyContent: 'center', alignItems: 'center'}}>
-                        <Image source={require('../assets/images/Path-40.png')} style={{width: 6, height: 12, margin: 10}}/>
-                        <Text style={{color: '#666666'}}>{item.title}</Text>
+            content = (
+                <View style={{flex: 1, justifyContent: 'space-between'}}>
+                    <View>
+                        <View style={{flexDirection: 'row', margin: 10}}>
+                            <Image source={require('../assets/images/Path-40.png')} style={{width: 6, height: 12, margin: 10}}/>
+                            <TouchableOpacity onPress={() => {}}>
+                                <Text style={{color: '#666666'}}>Help</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{flexDirection: 'row', margin: 10}}>
+                            <Image source={require('../assets/images/Path-40.png')} style={{width: 6, height: 12, margin: 10}}/>
+                            <TouchableOpacity onPress={() => {this.setState({termsModal: true})}}>
+                                <Text style={{color: '#666666'}}>Terms and Conditions</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{flexDirection: 'row', margin: 10}}>
+                            <Image source={require('../assets/images/Path-40.png')} style={{width: 6, height: 12, margin: 10}}/>
+                            <TouchableOpacity>
+                                <Text style={{color: '#666666'}}>Abuot</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                );
-            }));
+
+                    <TouchableOpacity style={{justifyContent: 'center', alignItems: 'center', margin: 10, borderTopWidth: 1, borderTopColor: Colors.border}}
+                                      onPress={() => {AsyncStorage.removeItem('userId'); this.props.navigation.navigate('Login');}}>
+                        <Text style={{color: Colors.danger, padding: 10}}>Log out of Azurepin</Text>
+                    </TouchableOpacity>
+                </View>
+            );
 
         return (
             <View style={{flex:1}}>
+                <Modal
+                    animationType="slide"
+                    transparent={false}
+                    visible={this.state.termsModal}
+                >
+                    <ScrollView style={{flex: 1}}>
+                        <View style={{borderBottomWidth: 1, borderBottomColor: Colors.border, margin: 10, justifyContent: 'flex-end', alignItems: 'flex-end'}}>
+                            <TouchableOpacity style={{padding: 10}} onPress={() => {this.setState({termsModal: false})}}>
+                                <Image source={require('../assets/images/Cancel.png')} style={{width: 12, height: 12}} />
+                            </TouchableOpacity>
+                        </View>
+                        {/*<WebView source={{uri: 'http://azurepins.com/terms.php'}} style={{marginTop: 5}} />*/}
+                    </ScrollView>
+                </Modal>
                 <View style={{flexDirection:'row', borderBottomColor: '#E3E3E3', borderBottomWidth: 1, padding: 15, margin: 10}}>
                     <View style={{flex:2, alignItems: 'flex-end'}}>
                         <Image source={require('../assets/images/Logo_Text.png')}

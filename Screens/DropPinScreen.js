@@ -1,6 +1,7 @@
 import React  from 'react';
 import {
     Alert,
+    AsyncStorage,
     BackHandler,
     Image,
     Platform,
@@ -17,6 +18,7 @@ import Video from 'react-native-video';
 import Geolocation from 'react-native-geolocation-service';
 import ProgressBar from 'react-native-progress/Bar';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import {Colors} from "../Components/Colors";
 const audioRecorderPlayer = new AudioRecorderPlayer();
 const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 
@@ -43,12 +45,7 @@ export default class DropPinScreen extends React.Component {
             start: "0:00",
             end: "1:00",
             modalVisible: false,
-            drafts: [
-                {id: 1, title: "GooOoooOoooOoooAL", time: "5M"},
-                {id: 2, title: "Was a Foul", time: "10M"},
-                {id: 3, title: "New Zealand", time: "15M"},
-                {id: 4, title: "Azurepin", time: "59M"}
-            ],
+            drafts: [],
             audioToPlay: null,
             recordSecs: "",
             recordTime: ""
@@ -61,6 +58,11 @@ export default class DropPinScreen extends React.Component {
             'hardwareBackPress',
             this.handleBackButtonPressAndroid
         );
+
+        AsyncStorage.getItem('drafts', (err, drafts) => {;
+            console.log("drafts", drafts);
+            this.setState({drafts: JSON.parse(drafts)});
+        });
     }
 
     componentWillUnmount() {
@@ -312,6 +314,33 @@ export default class DropPinScreen extends React.Component {
         this.setState({modalVisible: visible});
     }
 
+    draftItem() {
+        let newDraftItem = {id: 5, title: this.state.title, time: "1M"};
+        AsyncStorage.getItem('drafts', (err, result) => {
+            let drafts = this.state.drafts && this.state.drafts.length > 0 ? JSON.parse(result) : [];
+            drafts.push(newDraftItem);
+            AsyncStorage.setItem('drafts', JSON.stringify(drafts));
+        });
+
+        Alert.alert('', 'Your recording has been drafted!', [
+            {
+                text: 'OK',
+                onPress: () => this.props.navigation.pop()
+            },
+        ],
+            {cancelable: false});
+    }
+
+    dropDraft(item) {
+        this.setState({drafts: this.state.drafts.filter(obj => {
+                if (obj.id !== item.id)
+                    return obj;
+            }
+        )}, () => {
+            AsyncStorage.setItem('drafts', JSON.stringify(this.state.drafts));
+        });
+    }
+
     onExit = () => {
         if (this.state.videoToShow.length > 0 || this.state.audioToPlay) {
             Alert.alert(
@@ -321,7 +350,7 @@ export default class DropPinScreen extends React.Component {
                 'You can draft it up to 1 hour.',
                 [
                     {text: 'Discard', onPress: () => this.props.navigation.goBack(), style: 'destructive'},
-                    {text: 'Draft', onPress: () => {Alert.alert('', 'Your recording has been drafted!', [{text: 'OK', onPress: () => this.props.navigation.pop()},], {cancelable: false},);}},
+                    {text: 'Draft', onPress: () => this.draftItem()},
                     {text: 'Cancel', onPress: () => console.log('Cancel Pressed'), style: 'cancel'},
                 ],
                 {cancelable: false},
@@ -348,7 +377,7 @@ export default class DropPinScreen extends React.Component {
                         <View style={styles.containerTwo}>
                             <Text style={styles.modalTitle}>Draft</Text>
                             <View style={styles.containerThree}>
-                                {this.state.drafts.map((item, key) => {
+                                {this.state.drafts && this.state.drafts.length > 0 ? this.state.drafts.map((item, key) => {
                                     return (
                                         <View style={styles.containerFour} key={key} id={item.id}>
                                             <View>
@@ -356,13 +385,13 @@ export default class DropPinScreen extends React.Component {
                                                 <Text style={{color: '#666666', opacity: 0.8}}>{item.time}</Text>
                                             </View>
                                             <View>
-                                                <TouchableOpacity onPress={() => {this.setState({drafts: this.state.drafts.filter(obj => {if (obj.id !== item.id) return obj;})})}}>
+                                                <TouchableOpacity onPress={() => this.dropDraft(item)}>
                                                     <Image source={require('../assets/images/Azure-Pin.png')} style={{width: 40, height: 40}}/>
                                                 </TouchableOpacity>
                                             </View>
                                         </View>
                                     );
-                                })}
+                                }) : <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}><Text style={{color: Colors.text}}>No drafts yet!</Text></View>}
                             </View>
                             <View style={{justifyContent: 'flex-end', alignItems: 'flex-end', paddingRight: 15, paddingBottom: 5}}>
                                 <TouchableOpacity onPress={() => {this.setState({modalVisible:false})}}>

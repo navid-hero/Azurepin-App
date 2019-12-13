@@ -1,12 +1,25 @@
 import React from 'react';
-import {Alert, StyleSheet, Image, View, ScrollView, TouchableOpacity, Text, TextInput} from "react-native";
+import {
+    Alert,
+    StyleSheet,
+    Image,
+    View,
+    ScrollView,
+    TouchableOpacity,
+    Text,
+    TextInput,
+    AsyncStorage
+} from "react-native";
 import MapboxGL from "@mapbox/react-native-mapbox-gl";
 import {PermissionsAndroid} from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import NetInfo from "@react-native-community/netinfo";
+import Api from '../Components/Api';
 
 const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 MapboxGL.setAccessToken(accessToken);
+
+const api = new Api();
 
 export default class HomeScreen extends React.Component {
 
@@ -15,13 +28,10 @@ export default class HomeScreen extends React.Component {
 
         this.state = {
             mapCenter: {lng: 175.2908138, lat: -37.7906929},
+            nw: {lng: "", lat: ""},
+            se: {lng: "", lat: ""},
             mapZoomLevel: 13,
-            coordinates: [
-                {id: "1", lng: 175.2908138, lat: -37.7906929},
-                {id: "2", lng: 175.28, lat: -37.78},
-                {id: "3", lng: 175.28, lat: -37.8},
-                {id: "4", lng: 175.3, lat: -37.8}
-            ],
+            coordinates: [],
             search: false,
             searchQuery: "",
             searchResult: [],
@@ -42,6 +52,14 @@ export default class HomeScreen extends React.Component {
         });
         if (!this.requestLocationPermission())
             Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
+
+        // let drafts = [
+        //     {id: 1, title: "GooOoooOoooOoooAL", time: "5M"},
+        //     {id: 2, title: "Was a Foul", time: "10M"},
+        //     {id: 3, title: "New Zealand", time: "15M"},
+        //     {id: 4, title: "Azurepin", time: "59M"}
+        // ];
+        // AsyncStorage.setItem('drafts', JSON.stringify(drafts));
     }
 
     async requestLocationPermission() {
@@ -69,6 +87,50 @@ export default class HomeScreen extends React.Component {
             Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
     }
 
+    getPins() {
+        this.getCorners().then((corners) => {
+            console.log("corners", corners);
+            this.setState({
+                nw: {lng: corners[1][0], lat: corners[0][1]},
+                se: {lng: corners[0][0], lat: corners[1][1]},
+            }, () => {
+                AsyncStorage.getItem('userId', (err, userId) => {
+                    api.postRequest("Pin/GetPins", JSON.stringify([
+                        {key: "UserId", value: userId},
+                        {key: "Lat1", value: "100"},  // nw.lat
+                        {key: "Lat2", value: "-100"}, // se.lat
+                        {key: "Lon1", value: "-100"}, // nw.lng
+                        {key: "Lon2", value: "100"},  // se.lng
+                        {key: "Count", value: "10"},
+                        {key: "OrderId", value: "10"}
+                    ]))
+                        .then((response) => {
+                            console.log("pins", response);
+                            if (response.result === "success")
+                                if (response.pins && response.pins.length > 0) {
+                                    let pins = response.pins;
+                                    let coordinates = [];
+                                    for (let i=0; i<pins.length; i++)
+                                        coordinates.push({
+                                            id: pins[i].pinId.toString(),
+                                            lng: parseFloat(pins[i].longitude),
+                                            lat: parseFloat(pins[i].latitude)
+                                        });
+
+                                    this.setState({coordinates});
+                                }
+                                else
+                                    Alert.alert('Woops!', 'Looks something went wrong!');
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
+                });
+            });
+        });
+
+    }
+
     gotoCurrentLocation = () => {
         Geolocation.getCurrentPosition(
             (position) => {
@@ -78,14 +140,24 @@ export default class HomeScreen extends React.Component {
                         lat: position.coords.latitude
                     }
                 });
+
+                this.getPins();
             },
             (error) => {
-                // console.log(error.code, error.message);
                 if (error.code === 5) // Location settings are not satisfied.
                     Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
         );
+
+    };
+
+    async getCorners() {
+        if (this._map !== null) {
+            return await this._map.getVisibleBounds();
+        } else {
+            console.log("this._map is null");
+        }
     }
 
     searchPlaces(query) {
@@ -126,12 +198,14 @@ export default class HomeScreen extends React.Component {
             <View style={styles.page}>
                 <View style={styles.container}>
                     <MapboxGL.MapView
+                        ref={c => (this._map = c)}
                         style={styles.map}
                         logoEnabled={false}
                         zoomLevel={this.state.mapZoomLevel}
                         centerCoordinate={[this.state.mapCenter.lng, this.state.mapCenter.lat]}
                         showUserLocation={true}
                         onDidFinishRenderingMapFully={this.finishRenderMap}
+                        onRegionDidChange={() => this.getPins()}
                     >
                         {this.state.coordinates.map((item, key) => {
                             return <MapboxGL.PointAnnotation key={key}
@@ -160,7 +234,7 @@ export default class HomeScreen extends React.Component {
                             />
                             <TouchableOpacity onPress={() => {this.gotoCurrentLocation();}}>
                                 <Image source={require('../assets/images/Blue-Location.png')}
-                                       style={{width: 20, height: 19, marginRight: 10}}/>
+                                       style={{width: 20, height: 19, marginRight: 20}}/>
                             </TouchableOpacity>
                         </View> : <View></View>
                     }

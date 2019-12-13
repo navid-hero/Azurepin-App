@@ -1,16 +1,21 @@
 const baseUrl = "http://192.99.246.61/";
 export default class Api {
     async postRequest(url, data) {
-        return await fetch(baseUrl + url, {
-            method: 'POST',
+        let dataArray = JSON.parse(data);
+        let formData = new FormData();
+        for (let i=0; i<dataArray.length; i++)
+            formData.append(dataArray[i].key, dataArray[i].value);
+
+        return await fetch(baseUrl+url,{
+            method: 'post',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'multipart/form-data',
             },
-            body: data,
+            body: formData
         })
-            .then((response) => response.json())
-            .catch((error) => {
-                console.error(error);
-            });
+            .then(response => response.json())
+            .catch(err => {
+            console.log(err)
+        });
     }
 }

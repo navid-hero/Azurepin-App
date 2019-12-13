@@ -1,7 +1,6 @@
 import React from 'react';
-import {Alert, Image, Text, View, TextInput, TouchableOpacity, StyleSheet} from "react-native";
+import {Alert, AsyncStorage, Image, Text, View, TextInput, TouchableOpacity, StyleSheet} from "react-native";
 import { StackActions, NavigationActions } from 'react-navigation';
-import Storage from '../Components/store';
 import Api from '../Components/Api';
 const resetAction = StackActions.reset({
     index: 0,
@@ -24,11 +23,10 @@ export default class CheckPasswordScreen extends React.Component {
     }
 
     submitCode = () => {
-        Storage.getData('userId').then(value => {
-            console.log("userId", value);
-            api.postRequest("User/SubmitSignupKey", JSON.stringify({UserId: value, Key: this.state.code}))
-                .then((responseJson) => {
-                    if (responseJson.result === "success")
+        AsyncStorage.getItem('userId', (err, value) => {
+            api.postRequest("User/SubmitSignupKey", JSON.stringify([{key: "UserId", value: value}, {key: "Key", value: this.state.code}]))
+                .then((response) => {
+                    if (response.result === "success")
                         this.props.navigation.dispatch(resetAction);
                     else
                         Alert.alert('Woops!', 'Looks something went wrong!');
@@ -36,9 +34,6 @@ export default class CheckPasswordScreen extends React.Component {
                 .catch((error) => {
                     console.error(error);
                 });
-
-            // ToDo: next line should be removed
-            this.props.navigation.dispatch(resetAction);
         });
     }
     render() {

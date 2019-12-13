@@ -1,7 +1,6 @@
 import React from 'react';
-import {Alert, Image, Text, View, TextInput, TouchableOpacity, StyleSheet, ScrollView} from "react-native";
+import {Alert, AsyncStorage, Image, Text, View, TextInput, TouchableOpacity, StyleSheet, ScrollView} from "react-native";
 import { StackActions, NavigationActions } from 'react-navigation';
-import Storage from '../Components/store';
 import Api from '../Components/Api';
 import {Colors} from "../Components/Colors";
 
@@ -32,12 +31,10 @@ export default class LoginScreen extends React.Component {
         if (this.state.email.length < 6) {
             this.setState({emailValidationFailed: true});
         } else {
-            api.postRequest("User/SubmitEmail", JSON.stringify({Email: this.state.email}))
+            api.postRequest("User/SubmitEmail", JSON.stringify([{key: "Email", value: this.state.email}]))
                 .then((response) => {
-                    console.log("response", response);
                     if (response.result === "success" || response.result === "duplicate") {
-                        console.log("response.userId", response.userId);
-                        Storage.storeData('userId', response.userId);
+                        AsyncStorage.setItem('userId', response.userId.toString());
                         this.props.navigation.dispatch(resetAction);
                     } else {
                         Alert.alert('Woops!', 'Looks something went wrong!');
