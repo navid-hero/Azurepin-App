@@ -4,14 +4,12 @@ import {
     AsyncStorage,
     BackHandler,
     Image,
-    Platform,
     Modal,
     Text,
     TextInput,
     StyleSheet,
     TouchableOpacity,
     View,
-    TouchableHighlight
 } from "react-native";
 import { RNCamera } from 'react-native-camera';
 import Video from 'react-native-video';
@@ -19,8 +17,10 @@ import Geolocation from 'react-native-geolocation-service';
 import ProgressBar from 'react-native-progress/Bar';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import {Colors} from "../Components/Colors";
+import Api from '../Components/Api';
+
+const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
-const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 
 export default class DropPinScreen extends React.Component {
     constructor(props) {
@@ -188,14 +188,7 @@ export default class DropPinScreen extends React.Component {
             (position) => {
                 let lng = position.coords.longitude;
                 let lat = position.coords.latitude;
-                fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/' + lng + ',' + lat + '.json?access_token=' + accessToken)
-                    .then((response) => response.json())
-                    .then((responseJson) => {
-                        this.setState({location: responseJson.features[1].place_name});
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
+                api.getLocationName(lat, lng).then(response => {this.setState({location: response})});
             },
             (error) => {
                 // console.log(error.code, error.message);

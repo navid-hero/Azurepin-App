@@ -1,6 +1,8 @@
 import React from 'react';
 import MapboxGL from "@mapbox/react-native-mapbox-gl";
 import {Image, StyleSheet, Text, TouchableOpacity, View} from "react-native";
+import Api from '../Components/Api';
+const api = new Api();
 const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 MapboxGL.setAccessToken(accessToken);
 
@@ -9,14 +11,19 @@ export default class DetailScreen extends React.Component {
         super(props);
 
         this.state = {
-            mapCenter: {lng: 175.2908138, lat: -37.7906929},
+            mapCenter: {lng: this.props.navigation.getParam('lng'), lat: this.props.navigation.getParam('lat')},
             mapZoomLevel: 13,
-            coordinate: {id: "1", lng: 175.2908138, lat: -37.7906929},
+            coordinate: {id: "1", lng: this.props.navigation.getParam('lng'), lat: this.props.navigation.getParam('lat')},
+            location: ""
         };
     }
 
     componentDidMount() {
         MapboxGL.setTelemetryEnabled(false);
+
+        api.getLocationName(this.state.coordinate.lat, this.state.coordinate.lng).then(response => {
+            this.setState({location: response});
+        });
     }
 
     render() {
@@ -35,7 +42,7 @@ export default class DetailScreen extends React.Component {
                     <View style={styles.locationText}>
                         <Image source={require('../assets/images/Location.png')}
                                style={{ height: 37, width: 37 }} />
-                        <Text style={{color: '#707070', padding: 3}}>5th Ave, New York, NY, US</Text>
+                        <Text style={{color: '#707070', padding: 3}}>{this.state.location}</Text>
                     </View>
                 </View>
                 <View>

@@ -35,6 +35,7 @@ export default class HomeScreen extends React.Component {
             search: false,
             searchQuery: "",
             searchResult: [],
+            orderId: 0
         };
 
         this.finishRenderMap = this.finishRenderMap.bind(this);
@@ -90,19 +91,19 @@ export default class HomeScreen extends React.Component {
     getPins() {
         this.getCorners().then((corners) => {
             console.log("corners", corners);
-            this.setState({
-                nw: {lng: corners[1][0], lat: corners[0][1]},
-                se: {lng: corners[0][0], lat: corners[1][1]},
-            }, () => {
+            let nw = {lng: corners[1][0], lat: corners[0][1]};
+            let se = {lng: corners[0][0], lat: corners[1][1]};
+            let orderId = this.state.orderId+1;
+            this.setState({nw, se, orderId}, () => {
                 AsyncStorage.getItem('userId', (err, userId) => {
                     api.postRequest("Pin/GetPins", JSON.stringify([
                         {key: "UserId", value: userId},
-                        {key: "Lat1", value: "100"},  // nw.lat
-                        {key: "Lat2", value: "-100"}, // se.lat
-                        {key: "Lon1", value: "-100"}, // nw.lng
-                        {key: "Lon2", value: "100"},  // se.lng
-                        {key: "Count", value: "10"},
-                        {key: "OrderId", value: "10"}
+                        {key: "Lat1", value: nw.lat.toString()},  // "100"
+                        {key: "Lat2", value: se.lat.toString()}, // "-100"
+                        {key: "Lon1", value: nw.lng.toString()}, // "-100"
+                        {key: "Lon2", value: se.lng.toString()},  // "100"
+                        {key: "Count", value: "20"},
+                        {key: "OrderId", value: orderId.toString()}
                     ]))
                         .then((response) => {
                             console.log("pins", response);
@@ -114,7 +115,8 @@ export default class HomeScreen extends React.Component {
                                         coordinates.push({
                                             id: pins[i].pinId.toString(),
                                             lng: parseFloat(pins[i].longitude),
-                                            lat: parseFloat(pins[i].latitude)
+                                            lat: parseFloat(pins[i].latitude),
+                                            title: pins[i].title
                                         });
 
                                     this.setState({coordinates});
@@ -161,11 +163,13 @@ export default class HomeScreen extends React.Component {
     }
 
     searchPlaces(query) {
+        console.log("start search");
         this.setState({searchQuery: query}, function() {
             if (query.length > 0) {
                 fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/' + query + '.json?access_token=' + accessToken)
                     .then((response) => response.json())
                     .then((responseJson) => {
+                        console.log(responseJson);
                         this.setState({
                             searchResult: responseJson.features
                         }, function () {
@@ -251,7 +255,7 @@ export default class HomeScreen extends React.Component {
                     }
 
                     <TouchableOpacity style={[styles.icon, styles.playIcon]}
-                                      onPress={() => this.props.navigation.navigate('Play')}>
+                                      onPress={() => this.props.navigation.navigate('Play', {coordinates: JSON.stringify(this.state.coordinates)})}>
                         <Image source={require('../assets/images/Play.png')}
                                style={styles.image} />
                     </TouchableOpacity>
