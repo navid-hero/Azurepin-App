@@ -34,7 +34,7 @@ export default class DropPinScreen extends React.Component {
             latitude: "",
             longitude: "",
             location: "Location",
-            flashMode: RNCamera.Constants.FlashMode.off,
+            flashMode: 'on', // RNCamera.Constants.FlashMode.off,
             video:true,
             audio:false,
             type: RNCamera.Constants.Type.back,
@@ -208,6 +208,51 @@ export default class DropPinScreen extends React.Component {
         this.setState({date, time});
     }
 
+    dropNewPin(type, isDraft="0") {
+        let currentTimestamp = Date.now();
+        AsyncStorage.getItem('userId', (err, userId) => {
+            let fileName = userId.toString() + "_" + currentTimestamp.toString() + ".mp4";
+            console.log("start uploading...");
+            api.postRequest("Pin/UploadMedia", JSON.stringify([
+                {
+                    key: "Pin", value: {
+                        name: fileName,
+                        type: "video/mp4",
+                        uri: type === "video" ? this.state.videoToShow : this.state.audioToPlay
+                    }
+                },
+                {key: "UserId", value: userId}
+            ])).then((responseJson) => {
+                console.log(responseJson);
+                if (responseJson.result === "success") {
+                    api.postRequest("Pin/DropNewPin", JSON.stringify([
+                        {key: "UserId", value: userId.toString()},
+                        {key: "Title", value: this.state.title.toString()},
+                        {key: "Timestamp", value: currentTimestamp.toString()},
+                        {key: "Latitude", value: this.state.latitude.toString()},
+                        {key: "Longitude", value: this.state.longitude.toString()},
+                        {key: "Location", value: this.state.location.toString()},
+                        {key: "Duration", value: "0"},
+                        {key: "Type", value: type === "video" ? "2" : "1"},
+                        {key: "FileId", value: responseJson.fileId.toString()},
+                        {key: "IsDraft", value: isDraft}
+                    ])).then((responseJson) => {
+                        console.log(responseJson);
+                        if (responseJson.result === "success") {
+                            Alert.alert(
+                                '',
+                                isDraft === "0" ? 'Your pin dropped successfully' : 'Your recording has been drafted!',
+                                [{text: 'OK', onPress: () => this.props.navigation.pop()},],
+                                {cancelable: false},
+                            );
+                        }
+
+                    });
+                }
+            });
+        });
+    }
+
     recordVideo = async () => {
         if (this.state.video) {
             let data;
@@ -227,49 +272,9 @@ export default class DropPinScreen extends React.Component {
                 const data = await this.camera.stopRecording();
             } else {
                 if (this.state.title.length > 0) {
-                    let currentTimestamp = Date.now();
-                    AsyncStorage.getItem('userId', (err, userId) => {
-                        let fileName = userId.toString() + "_" + currentTimestamp.toString() + ".mp4";
-                        console.log("start uploading...");
-                        api.postRequest("Pin/UploadMedia", JSON.stringify([
-                            {
-                                key: "Pin", value: {
-                                    name: fileName,
-                                    type: "video/mp4",
-                                    uri: this.state.videoToShow
-                                }
-                            },
-                            {key: "UserId", value: userId}
-                        ])).then((responseJson) => {
-                            console.log(responseJson);
-                            if (responseJson.result === "success") {
-                                api.postRequest("Pin/DropNewPin", JSON.stringify([
-                                    {key: "UserId", value: userId.toString()},
-                                    {key: "Title", value: this.state.title.toString()},
-                                    {key: "Timestamp", value: currentTimestamp.toString()},
-                                    {key: "Latitude", value: this.state.latitude.toString()},
-                                    {key: "Longitude", value: this.state.longitude.toString()},
-                                    {key: "Location", value: this.state.location.toString()},
-                                    {key: "Duration", value: "0"},
-                                    {key: "Type", value: "2"},
-                                    {key: "FileId", value: responseJson.fileId.toString()},
-                                ])).then((responseJson) => {
-                                    console.log(responseJson);
-                                    if (responseJson.result === "success") {
-                                        Alert.alert(
-                                            '',
-                                            'Your pin dropped successfully',
-                                            [{text: 'OK', onPress: () => this.props.navigation.pop()},],
-                                            {cancelable: false},
-                                        );
-                                    }
-
-                                });
-                            }
-                        });
-                    });
+                    this.dropNewPin("video");
                 } else {
-
+                    //
                 }
             }
         } else if (this.state.audio) {
@@ -293,49 +298,9 @@ export default class DropPinScreen extends React.Component {
                 console.log("audio result", result);
             } else {
                 if (this.state.title.length > 0) {
-                    let currentTimestamp = Date.now();
-                    AsyncStorage.getItem('userId', (err, userId) => {
-                        let fileName = userId.toString() + "_" + currentTimestamp.toString() + ".mp4";
-                        console.log("start uploading...");
-                        api.postRequest("Pin/UploadMedia", JSON.stringify([
-                            {
-                                key: "Pin", value: {
-                                    name: fileName,
-                                    type: "video/mp4",
-                                    uri: this.state.audioToPlay
-                                }
-                            },
-                            {key: "UserId", value: userId}
-                        ])).then((responseJson) => {
-                            console.log(responseJson);
-                            if (responseJson.result === "success") {
-                                api.postRequest("Pin/DropNewPin", JSON.stringify([
-                                    {key: "UserId", value: userId.toString()},
-                                    {key: "Title", value: this.state.title.toString()},
-                                    {key: "Timestamp", value: currentTimestamp.toString()},
-                                    {key: "Latitude", value: this.state.latitude.toString()},
-                                    {key: "Longitude", value: this.state.longitude.toString()},
-                                    {key: "Location", value: this.state.location.toString()},
-                                    {key: "Duration", value: "0"},
-                                    {key: "Type", value: "1"},
-                                    {key: "FileId", value: responseJson.fileId.toString()},
-                                ])).then((responseJson) => {
-                                    console.log(responseJson);
-                                    if (responseJson.result === "success") {
-                                        Alert.alert(
-                                            '',
-                                            'Your pin dropped successfully',
-                                            [{text: 'OK', onPress: () => this.props.navigation.pop()},],
-                                            {cancelable: false},
-                                        );
-                                    }
-
-                                });
-                            }
-                        });
-                    });
+                    this.dropNewPin("audio");
                 } else {
-
+                    //
                 }
             }
         }
@@ -384,20 +349,34 @@ export default class DropPinScreen extends React.Component {
 
     draftItem() {
         if (this.state.title.length > 0) {
-            let newDraftItem = {id: 5, title: this.state.title, time: "1M"};
-            AsyncStorage.getItem('drafts', (err, result) => {
-                let drafts = this.state.drafts && this.state.drafts.length > 0 ? JSON.parse(result) : [];
-                drafts.push(newDraftItem);
-                AsyncStorage.setItem('drafts', JSON.stringify(drafts));
-            });
+            let currentTimestamp = Date.now();
+            AsyncStorage.getItem('userId', (err, userId) => {
+                let fileName = userId.toString() + "_" + currentTimestamp.toString() + ".mp4";
 
-            Alert.alert('', 'Your recording has been drafted!', [
-                    {
-                        text: 'OK',
-                        onPress: () => this.props.navigation.pop()
+                let newDraftItem = {
+                    id: 5,
+                    title: this.state.title.toString(),
+                    Timestamp: currentTimestamp.toString(),
+                    Pin: {
+                        name: fileName,
+                        type: "video/mp4",
+                        uri: type === "video" ? this.state.videoToShow : this.state.audioToPlay
                     },
-                ],
-                {cancelable: false});
+                    Latitude: this.state.latitude.toString(),
+                    Longitude: this.state.longitude.toString(),
+                    Location: this.state.location.toString(),
+                    Duration: "0",
+                    Type: this.state.video === "video" ? "2" : "1"
+                };
+
+                AsyncStorage.getItem('drafts', (err, result) => {
+                    let drafts = this.state.drafts && this.state.drafts.length > 0 ? JSON.parse(result) : [];
+                    drafts.push(newDraftItem);
+                    AsyncStorage.setItem('drafts', JSON.stringify(drafts));
+                });
+
+                this.dropNewPin(this.state.video ? "video" : "audio", "1");
+            });
         } else {
             ToastAndroid.show('put some title first', ToastAndroid.LONG);
         }

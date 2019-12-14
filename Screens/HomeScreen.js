@@ -214,7 +214,9 @@ export default class HomeScreen extends React.Component {
                         {this.state.coordinates.map((item, key) => {
                             return <MapboxGL.PointAnnotation key={key}
                                                              id={item.id}
-                                                             coordinate={[item.lng, item.lat]} />;
+                                                             coordinate={[item.lng, item.lat]}
+                                                             onSelected={(e) => {this.props.navigation.navigate('Play', {coordinates: JSON.stringify([this.state.coordinates[key]])})}}
+                            />;
                         })}
                     </MapboxGL.MapView>
 

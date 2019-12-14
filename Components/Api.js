@@ -12,7 +12,7 @@ export default class Api {
                 'Content-Type': 'multipart/form-data',
             },
             body: formData,
-            timeout: 3000000
+            timeout: 300000
         })
             .then(response => response.json())
             .catch(err => {

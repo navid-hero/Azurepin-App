@@ -25,7 +25,8 @@ export default class SettingScreen extends React.Component {
                 {title: 'Help', url: "http://azurepins.com/FAQ.php"},
                 {title: 'Terms and Conditions', url: "http://azurepins.com/terms.php"},
                 {title: 'About', url: "http://azurepins.com/about.php"}],
-            termsModal: false,
+            webModal: false,
+            webModalName: ""
         };
     }
 
@@ -136,7 +137,7 @@ export default class SettingScreen extends React.Component {
                                     <Image source={require('../assets/images/Path-40.png')}
                                            style={{width: 6, height: 12, margin: 10}}/>
                                     <TouchableOpacity onPress={() => {
-                                        this.setState({termsModal: true})
+                                        this.setState({webModal: true, webModalName: item.title})
                                     }}>
                                         <Text style={{color: '#666666'}}>{item.title}</Text>
                                     </TouchableOpacity>
@@ -167,11 +168,12 @@ export default class SettingScreen extends React.Component {
                 <Modal
                     animationType="slide"
                     transparent={false}
-                    visible={this.state.termsModal}
+                    visible={this.state.webModal}
                 >
                     <ScrollView style={{flex: 1}}>
-                        <View style={{borderBottomWidth: 1, borderBottomColor: Colors.border, margin: 10, justifyContent: 'flex-end', alignItems: 'flex-end'}}>
-                            <TouchableOpacity style={{padding: 10}} onPress={() => {this.setState({termsModal: false})}}>
+                        <View style={{borderBottomWidth: 1, borderBottomColor: Colors.border, margin: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <Text>{this.state.webModalName}</Text>
+                            <TouchableOpacity style={{padding: 10}} onPress={() => {this.setState({webModal: false})}}>
                                 <Image source={require('../assets/images/Cancel.png')} style={{width: 12, height: 12}} />
                             </TouchableOpacity>
                         </View>
