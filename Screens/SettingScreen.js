@@ -1,6 +1,8 @@
 import React from 'react';
 import {AsyncStorage, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View} from "react-native";
 import {Colors} from "../Components/Colors";
+import Api from '../Components/Api';
+const api = new Api();
 
 export default class SettingScreen extends React.Component {
     constructor(props) {
@@ -9,19 +11,52 @@ export default class SettingScreen extends React.Component {
         this.state = {
             active: 'notification',
             notifications: [
-                    {title: 'GooOoooOoooOoooAL', subtitle: 'FEBRUARY 22, 2019 5:32 PM', location: 'Manchester, UK', rate: 3, active: true},
-                    {title: 'Was a Foul!', subtitle: 'FEBRUARY 22, 2019 5:33 PM', location: 'Manchester, UK', rate: 2, active: true},
-                    {title: 'New Zealand', subtitle: 'FEBRUARY 22, 2019 7:16 PM', location: 'Hamilton, New Zealand', rate: 5, active: false},
+                    // {title: 'GooOoooOoooOoooAL', subtitle: 'FEBRUARY 22, 2019 5:32 PM', location: 'Manchester, UK', rate: 3, active: true},
+                    // {title: 'Was a Foul!', subtitle: 'FEBRUARY 22, 2019 5:33 PM', location: 'Manchester, UK', rate: 2, active: true},
+                    // {title: 'New Zealand', subtitle: 'FEBRUARY 22, 2019 7:16 PM', location: 'Hamilton, New Zealand', rate: 5, active: false},
                 ],
             bookmarks: [
-                {title: 'GooOoooOoooOoooAL', subtitle: 'FEBRUARY 22, 2019 5:32 PM', location: 'Manchester, UK', rate: 3, active: true},
-                {title: 'Was a Foul!', subtitle: 'FEBRUARY 22, 2019 5:33 PM', location: 'Manchester, UK', rate: 2, active: true},
-                {title: 'New Zealand', subtitle: 'FEBRUARY 22, 2019 7:16 PM', location: 'Hamilton, New Zealand', rate: 5, active: false},
+                // {title: 'GooOoooOoooOoooAL', subtitle: 'FEBRUARY 22, 2019 5:32 PM', location: 'Manchester, UK', rate: 3, active: true},
+                // {title: 'Was a Foul!', subtitle: 'FEBRUARY 22, 2019 5:33 PM', location: 'Manchester, UK', rate: 2, active: true},
+                // {title: 'New Zealand', subtitle: 'FEBRUARY 22, 2019 7:16 PM', location: 'Hamilton, New Zealand', rate: 5, active: false},
             ],
             ads: [],
-            settings: [{title: 'Help'}, {title: 'Terms and Conditions'}, {title: 'About'}],
+            settings: [
+                {title: 'Help', url: "http://azurepins.com/FAQ.php"},
+                {title: 'Terms and Conditions', url: "http://azurepins.com/terms.php"},
+                {title: 'About', url: "http://azurepins.com/about.php"}],
             termsModal: false,
         };
+    }
+
+    componentDidMount() {
+        AsyncStorage.getItem('userId', (err, userId) => {
+            api.postRequest("Pin/GetBookmarksPin", JSON.stringify([
+                {key: "UserId", value: userId}
+            ])).then((response) => {
+                if (response.result === "success") {
+                    let bookmarks = [];
+                    for(let i=0; i<response.bookmarks.length; i++) {
+                        let dateTime = new Date(response.bookmarks[i].timeStamp * 1000);
+                        let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                        let year = dateTime.getFullYear();
+                        let month = months[dateTime.getMonth()];
+                        let date = dateTime.getDate();
+                        let hour = dateTime.getHours();
+                        let minute = dateTime.getMinutes();
+
+                        bookmarks.push({
+                            title: response.bookmarks[i].tile,
+                            subtitle: month + " " + date + " " + year + " " + hour + ":" + minute,
+                            location: response.bookmarks[i].location,
+                            rate: response.bookmarks[i].likes
+                        });
+                    }
+
+                    this.setState({bookmarks});
+                }
+            });
+        })
     }
 
     changeActiveTab(tab) {
@@ -29,77 +64,103 @@ export default class SettingScreen extends React.Component {
     }
 
     render() {
-        let content = (<Text style={{color: '#666666'}}>Comming Soon...</Text>);
-        if (this.state.active === 'notification')
-            content = (this.state.notifications.map(function(item, key) {
-                return (
-                    <View style={{flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E3E3E3', height: 50, margin: 10, paddingBottom: 10}} key={key}>
-                        <View style={{flex: 3, marginRight: 5}}>
-                            <Text style={{color: '#666666', fontSize: 12}}>{item.title}</Text>
-                            <Text style={{color: '#666666', fontSize: 10}}>{item.subtitle}</Text>
-                            <Text style={{color: '#666666', fontSize: 10}}>{item.location}</Text>
+        let content = (
+            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', margin: 10, padding: 10}}>
+                <Text style={{color: Colors.text}}>Nothing in here!</Text>
+            </View>
+        );
+        if (this.state.active === 'notification') {
+            if (this.state.notifications && this.state.notifications.length > 0)
+                content = (this.state.notifications.map(function(item, key) {
+                    return (
+                        <View style={{flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E3E3E3', height: 50, margin: 10, paddingBottom: 10}} key={key}>
+                            <View style={{flex: 3, marginRight: 5}}>
+                                <Text style={{color: '#666666', fontSize: 12}}>{item.title}</Text>
+                                <Text style={{color: '#666666', fontSize: 10}}>{item.subtitle}</Text>
+                                <Text style={{color: '#666666', fontSize: 10}}>{item.location}</Text>
+                            </View>
+                            <View style={{flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginLeft: 5}}
+                                  pointerEvents="none">
+                                <Image source={require('../assets/images/Rated.png')}
+                                       style={{width: 63, height: 7, margin: 5}} />
+                                {item.active ? <Image source={require('../assets/images/Cancel.png')}
+                                                      style={{width: 12, height: 12, margin: 5}} /> : <View></View>}
+                            </View>
                         </View>
-                        <View style={{flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginLeft: 5}}
-                              pointerEvents="none">
-                            <Image source={require('../assets/images/Rated.png')}
-                                   style={{width: 63, height: 7, margin: 5}} />
-                            {item.active ? <Image source={require('../assets/images/Cancel.png')}
-                                                  style={{width: 12, height: 12, margin: 5}} /> : <View></View>}
+                    );
+                }));
+        } else if (this.state.active === 'bookmark') {
+            if (this.state.bookmarks && this.state.bookmarks.length > 0) {
+                content = (this.state.bookmarks.map(function (item, key) {
+                    return (
+                        <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            borderBottomWidth: 1,
+                            borderBottomColor: '#E3E3E3',
+                            height: 50,
+                            margin: 10,
+                            paddingBottom: 10
+                        }} key={key}>
+                            <View style={{flex: 3, marginRight: 5}}>
+                                <Text style={{color: '#666666', fontSize: 12}}>{item.title}</Text>
+                                <Text style={{color: '#666666', fontSize: 10}}>{item.subtitle}</Text>
+                                <Text style={{color: '#666666', fontSize: 10}}>{item.location}</Text>
+                            </View>
+                            <View style={{
+                                flex: 2,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                marginLeft: 5
+                            }}
+                                  pointerEvents="none">
+                                <Image source={require('../assets/images/Rated.png')}
+                                       style={{width: 63, height: 7, margin: 5}}/>
+                                <Image source={require('../assets/images/Icon.png')}
+                                       style={{width: 14, height: 18, margin: 5}}/>
+                            </View>
                         </View>
-                    </View>
-                );
-            }));
-        else if (this.state.active === 'bookmark')
-            content = (this.state.bookmarks.map(function(item, key) {
-                return (
-                    <View style={{flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E3E3E3', height: 50, margin: 10, paddingBottom: 10}} key={key}>
-                        <View style={{flex: 3, marginRight: 5}}>
-                            <Text style={{color: '#666666', fontSize: 12}}>{item.title}</Text>
-                            <Text style={{color: '#666666', fontSize: 10}}>{item.subtitle}</Text>
-                            <Text style={{color: '#666666', fontSize: 10}}>{item.location}</Text>
-                        </View>
-                        <View style={{flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginLeft: 5}}
-                              pointerEvents="none">
-                            <Image source={require('../assets/images/Rated.png')}
-                                   style={{width: 63, height: 7, margin: 5}} />
-                            <Image source={require('../assets/images/Icon.png')}
-                                   style={{width: 14, height: 18, margin: 5}} />
-                        </View>
-                    </View>
-                );
-            }));
-        else if (this.state.active === 'ad')
-            content = (<Text style={{color: '#666666'}}>Ads</Text>);
-        else if (this.state.active === 'setting')
+                    );
+                }));
+            }
+        } else if (this.state.active === 'ad') {
+                //
+        } else if (this.state.active === 'setting') {
             content = (
                 <View style={{flex: 1, justifyContent: 'space-between'}}>
                     <View>
-                        <View style={{flexDirection: 'row', margin: 10}}>
-                            <Image source={require('../assets/images/Path-40.png')} style={{width: 6, height: 12, margin: 10}}/>
-                            <TouchableOpacity onPress={() => {}}>
-                                <Text style={{color: '#666666'}}>Help</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <View style={{flexDirection: 'row', margin: 10}}>
-                            <Image source={require('../assets/images/Path-40.png')} style={{width: 6, height: 12, margin: 10}}/>
-                            <TouchableOpacity onPress={() => {this.setState({termsModal: true})}}>
-                                <Text style={{color: '#666666'}}>Terms and Conditions</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <View style={{flexDirection: 'row', margin: 10}}>
-                            <Image source={require('../assets/images/Path-40.png')} style={{width: 6, height: 12, margin: 10}}/>
-                            <TouchableOpacity>
-                                <Text style={{color: '#666666'}}>Abuot</Text>
-                            </TouchableOpacity>
-                        </View>
+                        {this.state.settings.map((item, key) => {
+                            return (
+                                <View key={key} style={{flexDirection: 'row', margin: 10}}>
+                                    <Image source={require('../assets/images/Path-40.png')}
+                                           style={{width: 6, height: 12, margin: 10}}/>
+                                    <TouchableOpacity onPress={() => {
+                                        this.setState({termsModal: true})
+                                    }}>
+                                        <Text style={{color: '#666666'}}>{item.title}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            );
+                        })}
                     </View>
 
-                    <TouchableOpacity style={{justifyContent: 'center', alignItems: 'center', margin: 10, borderTopWidth: 1, borderTopColor: Colors.border}}
-                                      onPress={() => {AsyncStorage.removeItem('userId'); this.props.navigation.navigate('Login');}}>
+                    <TouchableOpacity style={{
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        margin: 10,
+                        borderTopWidth: 1,
+                        borderTopColor: Colors.border
+                    }}
+                                      onPress={() => {
+                                          AsyncStorage.removeItem('userId');
+                                          this.props.navigation.navigate('Login');
+                                      }}>
                         <Text style={{color: Colors.danger, padding: 10}}>Log out of Azurepin</Text>
                     </TouchableOpacity>
                 </View>
             );
+        }
 
         return (
             <View style={{flex:1}}>
@@ -198,7 +259,6 @@ const styles = StyleSheet.create({
         margin: 10,
         borderWidth: 1,
         borderColor: '#E3E3E3',
-        borderRadius: 20,
-        alignItems: 'flex-start'
+        borderRadius: 20
     }
 });

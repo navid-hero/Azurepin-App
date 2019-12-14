@@ -11,7 +11,8 @@ export default class Api {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
-            body: formData
+            body: formData,
+            timeout: 3000000
         })
             .then(response => response.json())
             .catch(err => {

@@ -1,5 +1,6 @@
 import React from 'react';
-import {AsyncStorage, Image, Share, Text, TouchableOpacity, View} from "react-native";
+import {AsyncStorage, Clipboard, Image, Share, Text, ToastAndroid, TouchableOpacity, View} from "react-native";
+import ActionSheet from 'react-native-actionsheet';
 import {withNavigation} from "react-navigation";
 import Api from '../Components/Api';
 import Video from 'react-native-video';
@@ -13,10 +14,12 @@ class PlayScreen extends React.Component {
         super(props);
 
         this.state= {
+            pinId: "",
             mute: true,
             rated: false,
             video: "",
             audio: "",
+            uri: "",
             title: "",
             date: "",
             time: "",
@@ -27,26 +30,21 @@ class PlayScreen extends React.Component {
             currentPositionSec: "",
             currentDurationSec: "",
             playTime: "",
-            duration: ""
+            duration: "",
+            optionArray: ['Report', 'Bookmark', 'Copy Link', 'Save', 'Cancel'],
+            cancelButtonIndex: 4,
+            destructiveButtonIndex: 0
         };
     }
     componentDidMount() {
         AsyncStorage.getItem('userId', (err, userId) => {
             let coordinates = JSON.parse(this.props.navigation.getParam('coordinates'));
             if (coordinates.length > 0) {
-                let formData = new FormData();
-                formData.append("UserId",userId);
-                formData.append("PinId",coordinates[0].id);
-                fetch('http://192.99.246.61/Pin/GetPin',{
-                    method: 'post',
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                    body: formData
-                })
-                    .then(response => response.json())
-                    .then(responseJson => {
-                        console.log(responseJson);
+                api.postRequest("Pin/GetPin", JSON.stringify([
+                    {key: "UserId", value: userId},
+                    {key: "PinId", value: coordinates[1].id},
+                ]))
+                    .then((responseJson) => {
                         if (responseJson.result === "success") {
                             let dateTime = new Date(responseJson.timestamp * 1000);
                             let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -57,13 +55,14 @@ class PlayScreen extends React.Component {
                             let minute = dateTime.getMinutes();
                             let location = "";
 
-                            api.getLocationName(coordinates[0].lat, coordinates[0].lng).then(response => {
+                            api.getLocationName(coordinates[1].lat, coordinates[1].lng).then(response => {
                                 location = response;
 
                                 this.setState({
-                                    title: coordinates[0].title,
-                                    lng: coordinates[0].lng,
-                                    lat: coordinates[0].lat,
+                                    pinId: coordinates[1].id,
+                                    title: coordinates[1].title,
+                                    lng: coordinates[1].lng,
+                                    lat: coordinates[1].lat,
                                     date: month + " " + date + " " + year,
                                     time: hour + ":" + minute,
                                     location: location,
@@ -71,18 +70,113 @@ class PlayScreen extends React.Component {
                             });
 
                             let url = "http://192.99.246.61/"+responseJson.url.replace("~/", "").replace(/ /g, "%20");
+                            console.log(url);
                             if (responseJson.type === 1) // audio
-                                this.setState({video: "", audio: url});
+                                this.setState({uri: url, video: "", audio: url});
                             else if (responseJson.type === 2) // video
-                                this.setState({video: url, audio: ""});
+                                this.setState({uri: url, video: url, audio: ""});
                         }
-                    })
-                    .catch(err => {
-                        console.log("err", err);
                     });
             }
         });
     }
+
+    showActionSheet = () => {
+        this.ActionSheet.show();
+    };
+
+    resetActionSheet() {
+        this.setState({
+            optionArray: ['Report', 'Bookmark', 'Copy Link', 'Save', 'Cancel'],
+            cancelButtonIndex: 4,
+            destructiveButtonIndex: 0
+        });
+    }
+
+    onActionButtonPressed(index) {
+        switch (index) {
+            case 'Report':
+                this.onReport();
+                break;
+            case 'Bookmark':
+                this.onBookmark();
+                break;
+            case 'Copy Link':
+                this.onCopyLink();
+                break;
+            case 'Save':
+                break;
+            case 'Spam':
+                this.onSpam();
+                break;
+            case 'Inappropriate':
+                this.onInappropriate();
+                break;
+            case 'Cancel':
+                this.resetActionSheet();
+                break;
+            default:
+                alert(index);
+                break;
+        }
+    }
+
+    onReport() {
+        this.setState({
+            optionArray: ['Spam', 'Inappropriate', 'Cancel'],
+            cancelButtonIndex: 2,
+            destructiveButtonIndex: 0
+        });
+        this.ActionSheet.show();
+    }
+
+    onBookmark() {
+        AsyncStorage.getItem('userId', (err, userId) => {
+
+            api.postRequest("Pin/BookmarkPin", JSON.stringify([
+                {key: "userId", value: userId},
+                {key: "pinId", value: this.state.pinId}
+            ])).then((response) => {
+                if (response.result === "success")
+                    ToastAndroid.show('Bookmarked successfully', ToastAndroid.SHORT);
+            })
+        });
+    }
+
+    onCopyLink() {
+        Clipboard.setString(this.state.uri);
+        console.log("uri", this.state.uri);
+        ToastAndroid.show('Link copied to clipboard.', ToastAndroid.SHORT);
+    }
+
+    onSpam() {
+        AsyncStorage.getItem('userId', (err, userId) => {
+            api.postRequest("Pin/SpamPin", JSON.stringify([
+                {key: "UserId", value: userId},
+                {key: "PinId", value: this.state.pinId}
+            ])).then((response) => {
+                if (response.result === "success")
+                    ToastAndroid.show('Marked as Spam!', ToastAndroid.SHORT);
+            })
+        });
+
+        this.resetActionSheet();
+    }
+
+    onInappropriate() {
+        AsyncStorage.getItem('userId', (err, userId) => {
+            api.postRequest("Pin/InappropiratePin", JSON.stringify([
+                {key: "UserId", value: userId},
+                {key: "PinId", value: this.state.pinId}
+            ])).then((response) => {
+                if (response.result === "success")
+                    ToastAndroid.show('Marked as Inappropriate!', ToastAndroid.SHORT);
+            })
+        });
+
+        this.resetActionSheet();
+    }
+
     async changePlayIcon() {
         if (this.state.video.length > 0) {
             this.setState({playBack: !this.state.playBack});
@@ -141,66 +235,107 @@ class PlayScreen extends React.Component {
     };
     render() {
         return (
-            <View style={{flex:1, margin: 20, marginTop: 0}}>
-                <View style={{flex:1, flexDirection: 'row', justifyContent: 'space-between'}}>
-                    <View>
-                        <Text style={styles.titleText}>{this.state.title}</Text>
-                        <Text style={styles.subtitleText}>{this.state.date} / {this.state.time} / {this.state.location}</Text>
-                    </View>
-                    <View>
-                        <TouchableOpacity onPress={() => this.props.navigation.navigate('Detail', {lat: this.state.lat, lng: this.state.lng})}>
-                            <Image source={require('../assets/images/Location.png')}
-                                   style={{width: 40, height: 40}}/>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-                <View style={{flex:6}}>
-                    {this.state.audio.length > 0 ?
-                        <Image source={require('../assets/images/Audio.png')}
-                               style={{width: '100%', height: '100%'}} />
-                        :
-                        <Video source={{uri: this.state.video}}
-                               ref={(ref) => {this.player = ref }}
-                               paused={this.state.playBack}
-                               onEnd={() => { this.setState({playBack: true}) }}
-                               style={{width: '100%', height: '100%'}}
+            <View style={{flex: 1}}>
+                <View style={{flexDirection:'row', justifyContent: 'space-between',borderBottomColor: '#E3E3E3', borderBottomWidth: 1, margin: 20}}>
+                    <ActionSheet
+                        ref={o => (this.ActionSheet = o)}
+                        options={this.state.optionArray}
+                        //Define cancel button index in the option array
+                        //this will take the cancel option in bottom and will highlight it
+                        cancelButtonIndex={this.state.cancelButtonIndex}
+                        //If you want to highlight any specific option you can use below prop
+                        destructiveButtonIndex={this.state.destructiveButtonIndex}
+                        onPress={index => {
+                            //Clicking on the option will give you the index of the option clicked
+                            this.onActionButtonPressed(this.state.optionArray[index]);
+                        }}
+                    />
+                    <TouchableOpacity style={{margin:10}}
+                                      onPress={() => this.showActionSheet()}>
+                        <Image
+                            source={require('../assets/images/More.png')}
+                            style={{ width: 20, height: 19 }}
                         />
-                    }
-                    <TouchableOpacity style={styles.playContent} onPress={() => {this.changePlayIcon()}}>
-                        <Image source={!this.state.playBack ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
-                               style={{ height: 62, width: 62 }} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={() => {this.props.navigation.navigate('Setting');}}>
+                        <Image
+                            source={require('../assets/images/Logo_Text.png')}
+                            style={{ width: 129, height: 32 }}
+                        />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={{margin:10}}
+                                      onPress={() => {this.props.navigation.pop();}}>
+                        <Image
+                            source={require('../assets/images/Cancel.png')}
+                            style={{ width: 12, height: 12 }}
+                        />
                     </TouchableOpacity>
                 </View>
-                <View style={{flex:2}}>
-                    <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: 20}}>
-                        <TouchableOpacity onPress={() => {this.enableDisableSound()}}>
-                            <Image source={this.state.mute ? require('../assets/images/Mute.png') : require('../assets/images/More-Volume.png')}
-                                   style={{ height: 19, width: 29 }} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => {this.rate()}}>
-                            <Image source={this.state.rated ? require('../assets/images/Rated.png') : require('../assets/images/Rate.png')}
-                                   style={{ height: 11, width: 95 }} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => {this.onShare()}}>
-                            <Image source={require('../assets/images/Share.png')}
-                                   style={{ height: 27, width: 19 }} />
+
+                <View style={{flex:1, margin: 20, marginTop: 0}}>
+                    <View style={{flex:1, flexDirection: 'row', justifyContent: 'space-between'}}>
+                        <View>
+                            <Text style={styles.titleText}>{this.state.title}</Text>
+                            <Text style={styles.subtitleText}>{this.state.date} / {this.state.time} / {this.state.location}</Text>
+                        </View>
+                        <View>
+                            <TouchableOpacity onPress={() => this.props.navigation.navigate('Detail', {lat: this.state.lat, lng: this.state.lng})}>
+                                <Image source={require('../assets/images/Location.png')}
+                                       style={{width: 40, height: 40}}/>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                    <View style={{flex:6}}>
+                        {this.state.audio.length > 0 ?
+                            <Image source={require('../assets/images/Audio.png')}
+                                   style={{width: '100%', height: '100%'}} />
+                            :
+                            <Video source={{uri: this.state.video}}
+                                   ref={(ref) => {this.player = ref }}
+                                   paused={this.state.playBack}
+                                   onEnd={() => { this.setState({playBack: true}) }}
+                                   style={{width: '100%', height: '100%'}}
+                            />
+                        }
+                        <TouchableOpacity style={styles.playContent} onPress={() => {this.changePlayIcon()}}>
+                            <Image source={!this.state.playBack ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
+                                   style={{ height: 62, width: 62 }} />
                         </TouchableOpacity>
                     </View>
-                    <View style={{marginTop: 20}}>
-                        <TouchableOpacity>
-                            <Image source={require('../assets/images/Progress.png')}
-                                   style={{ height: 30, width: '100%' }} />
-                        </TouchableOpacity>
-                    </View>
-                    <View style={{alignItems: 'center'}}>
-                        <TouchableOpacity style={{marginTop: 20}}
-                                          onPress={() => this.props.navigation.navigate('PlayHalf')}>
-                            <Image source={require('../assets/images/Rectangle-64.png')}
-                                   style={{ height: 10, width: 150, borderRadius: 5 }} />
-                        </TouchableOpacity>
+                    <View style={{flex:2}}>
+                        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: 20}}>
+                            <TouchableOpacity onPress={() => {this.enableDisableSound()}}>
+                                <Image source={this.state.mute ? require('../assets/images/Mute.png') : require('../assets/images/More-Volume.png')}
+                                       style={{ height: 19, width: 29 }} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => {this.rate()}}>
+                                <Image source={this.state.rated ? require('../assets/images/Rated.png') : require('../assets/images/Rate.png')}
+                                       style={{ height: 11, width: 95 }} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => {this.onShare()}}>
+                                <Image source={require('../assets/images/Share.png')}
+                                       style={{ height: 27, width: 19 }} />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{marginTop: 20}}>
+                            <TouchableOpacity>
+                                <Image source={require('../assets/images/Progress.png')}
+                                       style={{ height: 30, width: '100%' }} />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{alignItems: 'center'}}>
+                            <TouchableOpacity style={{marginTop: 20}}
+                                              onPress={() => this.props.navigation.navigate('PlayHalf')}>
+                                <Image source={require('../assets/images/Rectangle-64.png')}
+                                       style={{ height: 10, width: 150, borderRadius: 5 }} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </View>
+
         );
     }
 }

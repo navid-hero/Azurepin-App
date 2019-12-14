@@ -18,7 +18,7 @@ const MainNavigator = createStackNavigator({
     CheckPassword: {screen: CheckPasswordScreen, navigationOptions: {headerShown: false}},
     Home: {screen: HomeScreen, navigationOptions: {headerShown: false}},
     DropPin: {screen: DropPinScreen, navigationOptions: {headerShown: false}},
-    Play: {screen: PlayScreen, navigationOptions: ({navigation}) => ({header: <CustomHeader/>})},
+    Play: {screen: PlayScreen, navigationOptions: ({navigation}) => ({header: null})},
     PlayHalf: {screen: PlayHalfScreen, navigationOptions: ({navigation}) => ({header: null})},
     Detail: {screen: DetailScreen, navigationOptions: ({navigation}) => ({header: null})},
     Setting: {screen: SettingScreen, navigationOptions: ({navigation}) => ({header: null})},

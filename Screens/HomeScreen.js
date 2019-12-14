@@ -98,16 +98,16 @@ export default class HomeScreen extends React.Component {
                 AsyncStorage.getItem('userId', (err, userId) => {
                     api.postRequest("Pin/GetPins", JSON.stringify([
                         {key: "UserId", value: userId},
-                        {key: "Lat1", value: nw.lat.toString()},  // "100"
-                        {key: "Lat2", value: se.lat.toString()}, // "-100"
-                        {key: "Lon1", value: nw.lng.toString()}, // "-100"
-                        {key: "Lon2", value: se.lng.toString()},  // "100"
+                        {key: "Lat1", value: nw.lat.toString()},
+                        {key: "Lat2", value: se.lat.toString()},
+                        {key: "Lon1", value: nw.lng.toString()},
+                        {key: "Lon2", value: se.lng.toString()},
                         {key: "Count", value: "20"},
                         {key: "OrderId", value: orderId.toString()}
                     ]))
                         .then((response) => {
                             console.log("pins", response);
-                            if (response.result === "success")
+                            if (response.result === "success" && response.orderId === orderId.toString())
                                 if (response.pins && response.pins.length > 0) {
                                     let pins = response.pins;
                                     let coordinates = [];
