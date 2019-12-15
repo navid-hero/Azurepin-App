@@ -4,6 +4,7 @@ import {Colors} from "../Components/Colors";
 import Api from '../Components/Api';
 import { Rating } from 'react-native-elements';
 const api = new Api();
+const RATE_IMAGE = require('../assets/images/rate-icon.png');
 
 export default class SettingScreen extends React.Component {
     constructor(props) {
@@ -88,6 +89,15 @@ export default class SettingScreen extends React.Component {
         let content = (
             <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', margin: 10, padding: 10}}>
                 <Text style={{color: Colors.text}}>Nothing in here!</Text>
+                <Rating
+                    type='custom'
+                    ratingImage={RATE_IMAGE}
+                    ratingColor={Colors.primary}
+                    ratingBackgroundColor={Colors.lightBackground}
+                    imageSize={10}
+                    startingValue={2}
+                    readonly={true}
+                />
             </View>
         );
         if (this.state.active === 'notification') {
@@ -137,7 +147,10 @@ export default class SettingScreen extends React.Component {
                                 marginLeft: 5
                             }}>
                                 <Rating
-                                    type='heart'
+                                    type='custom'
+                                    ratingImage={RATE_IMAGE}
+                                    ratingColor={Colors.primary}
+                                    ratingBackgroundColor={Colors.light}
                                     imageSize={15}
                                     startingValue={item.rate}
                                     readonly={true}

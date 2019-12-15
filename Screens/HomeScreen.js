@@ -92,7 +92,6 @@ export default class HomeScreen extends React.Component {
 
     getPins() {
         this.getCorners().then((corners) => {
-            console.log("corners", corners);
             let nw = {lng: corners[1][0], lat: corners[0][1]};
             let se = {lng: corners[0][0], lat: corners[1][1]};
             let orderId = this.state.orderId+1;
@@ -109,7 +108,7 @@ export default class HomeScreen extends React.Component {
                     ]))
                         .then((response) => {
                             console.log("pins", response);
-                            if (response.result === "success" && response.orderId === orderId.toString())
+                            if (response && response.result === "success" && response.orderId === orderId.toString())
                                 if (response.pins && response.pins.length > 0) {
                                     let pins = response.pins;
                                     let coordinates = [];
@@ -172,11 +171,12 @@ export default class HomeScreen extends React.Component {
                     .then((response) => response.json())
                     .then((responseJson) => {
                         console.log(responseJson);
-                        this.setState({
-                            searchResult: responseJson.features
-                        }, function () {
-                            // console.log(this.state.searchResult);
-                        });
+                        if (responseJson)
+                            this.setState({
+                                searchResult: responseJson.features
+                            }, function () {
+                                // console.log(this.state.searchResult);
+                            });
                     })
                     .catch((error) => {
                         console.error(error);
@@ -230,7 +230,7 @@ export default class HomeScreen extends React.Component {
 
                     {this.state.search ?
                         <View style={styles.searchOpenIcon}>
-                            <TouchableOpacity onPress={() => {this.setState({search: false})}}>
+                            <TouchableOpacity onPress={() => {this.setState({search: false, searchResult: []})}}>
                                 <Image source={require('../assets/images/Searchbar-close.png')}
                                        style={[styles.image, {width: 57, height: 57}]}/>
                             </TouchableOpacity>
@@ -336,10 +336,11 @@ const styles = StyleSheet.create({
     placesContainer: {
         left: 35,
         right: 35,
-        top: 110,
+        top: 112,
         height: 120,
         backgroundColor: '#DCDCDC',
-        color: '#707070'
+        color: '#707070',
+        borderRadius: 20
     },
     searchResultItem: {
         margin: 10,

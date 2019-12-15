@@ -25,6 +25,7 @@ export default class LoginScreen extends React.Component {
 
     componentDidMount() {
         AsyncStorage.getItem('accepted_agreement', (err, value) => {
+            console.log("accepted_agreement", value);
             if (!value)
                 this.setState({termsModal: true});
         });
@@ -42,7 +43,7 @@ export default class LoginScreen extends React.Component {
         } else {
             api.postRequest("User/SubmitEmail", JSON.stringify([{key: "Email", value: this.state.email}]))
                 .then((response) => {
-                    if (response.result === "success" || response.result === "duplicate") {
+                    if (response && (response.result === "success" || response.result === "duplicate")) {
                         AsyncStorage.setItem('userId', response.userId.toString());
                         this.props.navigation.dispatch(resetAction);
                     } else {
@@ -56,7 +57,11 @@ export default class LoginScreen extends React.Component {
     };
 
     acceptAgreement() {
-        AsyncStorage.setItem('accepted_agreement', true);
+        AsyncStorage.setItem('accepted_agreement', "true", () => {
+            AsyncStorage.getItem('accepted_agreement', (err, value) => {
+                console.log("accepted_agreement", value);
+            });
+        });
         this.setState({termsModal: false});
     }
 
@@ -69,8 +74,8 @@ export default class LoginScreen extends React.Component {
                     transparent={true}
                     visible={this.state.termsModal}
                 >
-                    <View style={{flex: 1, backgroundColor: 'rgba(255, 255, 255, 0.7)'}}>
-                        <View style={{position: 'absolute', top: 150, left: 15, right: 15, bottom: 250, borderRadius: 5, backgroundColor: '#e5e5e5', padding: 20}}>
+                    <View style={{flex: 1, backgroundColor: 'rgba(255, 255, 255, 0.7)', justifyContent: 'center', alignItems: 'center'}}>
+                        <View style={{height: 250, width: 300, borderRadius: 5, backgroundColor: '#e5e5e5', padding: 20}}>
                             <Text style={{fontSize: 18, fontWeight: 'bold', padding: 10}}>Terms and Conditions</Text>
                             <Text style={{color: Colors.text, padding: 10, paddingBottom: 0}}>
                                 Please confirm that you have read and agree to the Azurepin
@@ -83,7 +88,7 @@ export default class LoginScreen extends React.Component {
                                 </TouchableOpacity>
                                 <Text style={{color: Colors.text}}> agreement.</Text>
                             </View>
-                            <View style={{flexDirection: 'row', justifyContent: 'flex-end'}}>
+                            <View style={{flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-end', height: 100}}>
                                 <TouchableOpacity onPress={() => BackHandler.exitApp()}>
                                     <Text style={{color: Colors.primaryDark, padding: 20}}>DISAGREE</Text>
                                 </TouchableOpacity>

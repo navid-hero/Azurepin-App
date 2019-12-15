@@ -5,6 +5,7 @@ import {
     BackHandler,
     Image,
     Modal,
+    PermissionsAndroid,
     Text,
     TextInput,
     StyleSheet,
@@ -66,6 +67,39 @@ export default class DropPinScreen extends React.Component {
             console.log("draftssss", drafts);
             this.setState({drafts: JSON.parse(drafts)});
         });
+
+
+        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA)
+            .then((hasPermission) => {
+                if (!hasPermission)
+                    this.requestPermissions(PermissionsAndroid.PERMISSIONS.CAMERA, 'Access Camera', 'Azurepin needs access to your camera')
+                        .then((response) => {console.log(response)});
+        });
+
+        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA)
+            .then((hasPermission) => {
+                if (!hasPermission)
+                    this.requestPermissions(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, 'Access Microphone', 'Azurepin needs access to your microphone')
+                        .then((response) => {console.log(response)});
+            });
+    }
+
+    async requestPermissions(permission, title, message) {
+        try {
+            const granted = await PermissionsAndroid.request(
+                permission,
+                {
+                    title: title,
+                    message: message,
+                    buttonNeutral: 'Ask Me Later',
+                    buttonNegative: 'Cancel',
+                    buttonPositive: 'OK',
+                },
+            );
+            return granted === PermissionsAndroid.RESULTS.GRANTED;
+        } catch (err) {
+            return false;
+        }
     }
 
     componentWillUnmount() {
@@ -213,6 +247,7 @@ export default class DropPinScreen extends React.Component {
         AsyncStorage.getItem('userId', (err, userId) => {
             let fileName = userId.toString() + "_" + currentTimestamp.toString() + ".mp4";
             console.log("start uploading...");
+            ToastAndroid.show("your recording is uploading in background...", ToastAndroid.SHORT);
             api.postRequest("Pin/UploadMedia", JSON.stringify([
                 {
                     key: "Pin", value: {
@@ -224,7 +259,7 @@ export default class DropPinScreen extends React.Component {
                 {key: "UserId", value: userId}
             ])).then((responseJson) => {
                 console.log(responseJson);
-                if (responseJson.result === "success") {
+                if (responseJson && responseJson.result === "success") {
                     api.postRequest("Pin/DropNewPin", JSON.stringify([
                         {key: "UserId", value: userId.toString()},
                         {key: "Title", value: this.state.title.toString()},
@@ -238,18 +273,17 @@ export default class DropPinScreen extends React.Component {
                         {key: "IsDraft", value: isDraft}
                     ])).then((responseJson) => {
                         console.log(responseJson);
-                        if (responseJson.result === "success") {
-                            Alert.alert(
-                                '',
-                                isDraft === "0" ? 'Your pin dropped successfully' : 'Your recording has been drafted!',
-                                [{text: 'OK', onPress: () => this.props.navigation.pop()},],
-                                {cancelable: false},
-                            );
+                        if (responseJson && responseJson.result === "success") {
+                            let message = isDraft === "0" ? 'Your pin dropped successfully' : 'Your recording has been drafted!';
+                            ToastAndroid.show(message, ToastAndroid.LONG);
+                            this.putDraftInStorage(responseJson.pinId);
+                        } else {
+                            ToastAndroid.show('Unable to communicate with server', ToastAndroid.LONG);
                         }
-
                     });
                 }
             });
+            setTimeout(() => {this.props.navigation.pop();}, 1000);
         });
     }
 
@@ -364,46 +398,63 @@ export default class DropPinScreen extends React.Component {
 
     draftItem() {
         if (this.state.title.length > 0) {
-            let currentTimestamp = Date.now();
-            AsyncStorage.getItem('userId', (err, userId) => {
-                let fileName = userId.toString() + "_" + currentTimestamp.toString() + ".mp4";
-
-                let newDraftItem = {
-                    id: 5,
-                    title: this.state.title.toString(),
-                    Timestamp: currentTimestamp.toString(),
-                    Pin: {
-                        name: fileName,
-                        type: "video/mp4",
-                        uri: this.state.video ? this.state.videoToShow : this.state.audioToPlay
-                    },
-                    Latitude: this.state.latitude.toString(),
-                    Longitude: this.state.longitude.toString(),
-                    Location: this.state.location.toString(),
-                    Duration: "0",
-                    Type: this.state.video ? "2" : "1"
-                };
-
-                AsyncStorage.getItem('drafts', (err, result) => {
-                    let drafts = this.state.drafts && this.state.drafts.length > 0 ? JSON.parse(result) : [];
-                    drafts.push(newDraftItem);
-                    AsyncStorage.setItem('drafts', JSON.stringify(drafts));
-                });
-
-                this.dropNewPin(this.state.video ? "video" : "audio", "1");
-            });
+            this.dropNewPin(this.state.video ? "video" : "audio", "1");
         } else {
             ToastAndroid.show('put some title first', ToastAndroid.LONG);
         }
     }
 
+    putDraftInStorage(pinId) {
+        let currentTimestamp = Date.now();
+        AsyncStorage.getItem('userId', (err, userId) => {
+            let fileName = userId.toString() + "_" + currentTimestamp.toString() + ".mp4";
+
+            let newDraftItem = {
+                id: pinId,
+                title: this.state.title.toString(),
+                time: "",
+                Timestamp: currentTimestamp.toString(),
+                Pin: {
+                    name: fileName,
+                    type: "video/mp4",
+                    uri: this.state.video ? this.state.videoToShow : this.state.audioToPlay
+                },
+                Latitude: this.state.latitude.toString(),
+                Longitude: this.state.longitude.toString(),
+                Location: this.state.location.toString(),
+                Duration: "0",
+                Type: this.state.video ? "2" : "1"
+            };
+
+            AsyncStorage.getItem('drafts', (err, result) => {
+                let drafts = this.state.drafts && this.state.drafts.length > 0 ? JSON.parse(result) : [];
+                drafts.push(newDraftItem);
+                AsyncStorage.setItem('drafts', JSON.stringify(drafts));
+            });
+        });
+    }
+
     dropDraft(item) {
-        this.setState({drafts: this.state.drafts.filter(obj => {
-                if (obj.id !== item.id)
-                    return obj;
-            }
-        )}, () => {
-            AsyncStorage.setItem('drafts', JSON.stringify(this.state.drafts));
+        AsyncStorage.getItem('userId', (err, userId) => {
+            api.postRequest("Pin/DeleteDraft", JSON.stringify([
+                {key: "UserId", value: userId},
+                {key: "PinId", value: item.id}
+            ]))
+                .then((response) => {
+                    if (response && response.result === "success") {
+                        this.setState({drafts: this.state.drafts.filter(obj => {
+                                    if (obj.id !== item.id)
+                                        return obj;
+                                })}, () => {
+                            AsyncStorage.setItem('drafts', JSON.stringify(this.state.drafts))
+                                .then(() => {
+                                    ToastAndroid.show('Draft pined successfully', ToastAndroid.SHORT);
+                                });
+                        });
+                    } else {
+                        ToastAndroid.show('Unable to pin draft', ToastAndroid.SHORT);
+                    }
+                });
         });
     }
 
@@ -517,6 +568,7 @@ export default class DropPinScreen extends React.Component {
                                                this.player = ref
                                            }}
                                            paused={this.state.playBack}
+                                           muted={false}
                                            resizeMode="cover"
                                            onEnd={() => {
                                                this.setState({playBack: true})

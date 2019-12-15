@@ -11,6 +11,7 @@ import {Colors} from "../Components/Colors";
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
+const RATE_IMAGE = require('../assets/images/rate-icon.png');
 
 class PlayScreen extends React.Component {
     constructor(props) {
@@ -96,7 +97,6 @@ class PlayScreen extends React.Component {
 
     onBookmark() {
         AsyncStorage.getItem('userId', (err, userId) => {
-
             api.postRequest("Pin/BookmarkPin", JSON.stringify([
                 {key: "userId", value: userId},
                 {key: "pinId", value: this.state.pinId}
@@ -174,9 +174,7 @@ class PlayScreen extends React.Component {
     enableDisableSound() {
         this.setState({mute: !this.state.mute});
     }
-    rate() {
-        this.setState({rated: !this.state.rated});
-    }
+
     onShare = async () => {
         try {
             const result = await Share.share({
@@ -209,7 +207,7 @@ class PlayScreen extends React.Component {
                     {key: "PinId", value: coordinates[index].id},
                 ]))
                     .then((responseJson) => {
-                        if (responseJson.result === "success") {
+                        if (responseJson && responseJson.result === "success") {
                             let dateTime = new Date(responseJson.timestamp * 1000);
                             let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                             let year = dateTime.getFullYear();
@@ -230,11 +228,11 @@ class PlayScreen extends React.Component {
                                     lat: coordinates[index].lat,
                                     date: month + " " + date + " " + year,
                                     time: hour + ":" + minute,
-                                    location: location,
+                                    location: location
                                 });
                             });
 
-                            let url = "http://192.99.246.61/"+responseJson.url.replace("~/", "").replace(/ /g, "%20");
+                            let url = "http://185.173.106.155/"+responseJson.url.replace("~/", "").replace(/ /g, "%20");
                             console.log(url);
                             if (responseJson.type === 1) // audio
                                 this.setState({uri: url, video: "", audio: url});
@@ -247,7 +245,19 @@ class PlayScreen extends React.Component {
     };
 
     ratingCompleted(rating) {
-        console.log("Rating is: " + rating)
+        console.log("rating", rating);
+        AsyncStorage.getItem('userId', (err, userId) => {
+            api.postRequest("Pin/LikePin", JSON.stringify([
+                {key: "UserId", value: userId},
+                {key: "PinId", value: this.state.pinId},
+                {key: "LikeType", value: rating.toString()}
+            ])).then((response) => {
+                if (response && response.result === "success") {
+                    ToastAndroid.show('rated successfully', ToastAndroid.SHORT);
+                    this.setState({rated: true});
+                }
+            })
+        });
     }
 
     render() {
@@ -317,6 +327,7 @@ class PlayScreen extends React.Component {
                                                ref={(ref) => {this.player = ref }}
                                                resizeMode="cover"
                                                paused={!this.state.playBack}
+                                               muted={this.state.mute}
                                                onEnd={() => { this.setState({playBack: false}) }}
                                                style={{width: '100%', height: '100%'}}
                                         />
@@ -340,11 +351,13 @@ class PlayScreen extends React.Component {
                                        {/*style={{ height: 11, width: 95 }} />*/}
                             {/*</TouchableOpacity>*/}
                             <Rating
-                                type='heart'
-                                ratingCount={5}
-                                imageSize={20}
-                                ratingColor={Colors.primaryDark}
-                                onFinishRating={this.ratingCompleted}
+                                type='custom'
+                                ratingImage={RATE_IMAGE}
+                                ratingColor={Colors.primary}
+                                ratingBackgroundColor={Colors.light}
+                                imageSize={15}
+                                onFinishRating={(rating) => this.ratingCompleted(rating)}
+                                readonly={this.state.rated}
                             />
                             <TouchableOpacity onPress={() => {this.onShare()}}>
                                 <Image source={require('../assets/images/Share.png')}

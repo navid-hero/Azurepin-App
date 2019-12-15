@@ -1,4 +1,4 @@
-const baseUrl = "http://192.99.246.61/";
+const baseUrl = "http://185.173.106.155/";
 export default class Api {
     async postRequest(url, data) {
         let dataArray = JSON.parse(data);
