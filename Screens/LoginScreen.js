@@ -1,5 +1,5 @@
 import React from 'react';
-import {Alert, AsyncStorage, Image, Text, View, TextInput, TouchableOpacity, StyleSheet, ScrollView} from "react-native";
+import {Alert, AsyncStorage, BackHandler, Image, Modal, Text, View, TextInput, TouchableOpacity, StyleSheet, ScrollView} from "react-native";
 import { StackActions, NavigationActions } from 'react-navigation';
 import Api from '../Components/Api';
 import {Colors} from "../Components/Colors";
@@ -17,8 +17,27 @@ export default class LoginScreen extends React.Component {
 
         this.state = {
             email: "",
-            emailValidationFailed: false
+            emailValidationFailed: false,
+            termsModal: false,
+            webModal: false
         };
+    }
+
+    componentDidMount() {
+        AsyncStorage.getItem('accepted_agreement', (err, value) => {
+            if (!value) {
+                /*Alert.alert(
+                    'Terms and Conditions',
+                    'Please confirm that you have read and agree to the Azurepin terms and conditions agreement.',
+                    [
+                        {text: 'DISAGREE', onPress: () => BackHandler.exitApp() },
+                        {text: 'AGREE', onPress: () => AsyncStorage.setItem('accepted_agreement', true) },
+                    ],
+                    {cancelable: false},
+                );*/
+                this.setState({termsModal: true});
+            }
+        });
     }
 
     onChangeEmail(email) {
@@ -44,12 +63,62 @@ export default class LoginScreen extends React.Component {
                     console.error(error);
                 });
         }
+    };
+
+    acceptAgreement() {
+        AsyncStorage.setItem('accepted_agreement', true);
+        this.setState({termsModal: false});
     }
 
     render() {
         // const {navigate} = this.props.navigation;
         return (
             <ScrollView contentContainerStyle={styles.contentContainer}>
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={this.state.termsModal}
+                >
+                    <View style={{flex: 1, backgroundColor: 'rgba(255, 255, 255, 0.7)'}}>
+                        <View style={{position: 'absolute', top: 150, left: 15, right: 15, bottom: 250, borderRadius: 5, backgroundColor: '#e5e5e5', padding: 20}}>
+                            <Text style={{fontSize: 18, fontWeight: 'bold', padding: 10}}>Terms and Conditions</Text>
+                            <Text style={{color: Colors.text, padding: 10, paddingBottom: 0}}>
+                                Please confirm that you have read and agree to the Azurepin
+                            </Text>
+                            <View style={{flexDirection: 'row'}}>
+                                <TouchableOpacity onPress={() => this.setState({webModal: true})}>
+                                    <Text style={{color: Colors.primary, fontWeight: 'bold', paddingLeft: 10}}>
+                                        terms and conditions
+                                    </Text>
+                                </TouchableOpacity>
+                                <Text style={{color: Colors.text}}> agreement.</Text>
+                            </View>
+                            <View style={{flexDirection: 'row', justifyContent: 'flex-end'}}>
+                                <TouchableOpacity onPress={() => BackHandler.exitApp()}>
+                                    <Text style={{color: Colors.primaryDark, padding: 20}}>DISAGREE</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => this.acceptAgreement()}>
+                                    <Text style={{color: Colors.primaryDark, padding: 20}}>AGREE</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+                <Modal
+                    animationType="slide"
+                    transparent={false}
+                    visible={this.state.webModal}
+                >
+                    <ScrollView style={{flex: 1}}>
+                        <View style={{borderBottomWidth: 1, borderBottomColor: Colors.border, margin: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <Text>Terms and Conditions</Text>
+                            <TouchableOpacity style={{padding: 10}} onPress={() => {this.setState({webModal: false})}}>
+                                <Image source={require('../assets/images/Cancel.png')} style={{width: 12, height: 12}} />
+                            </TouchableOpacity>
+                        </View>
+                        {/*<WebView source={{uri: 'http://azurepins.com/terms.php'}} style={{marginTop: 5}} />*/}
+                    </ScrollView>
+                </Modal>
                 <View style={{flex:1, alignItems: 'center'}}>
                     <View style={{flex:1, justifyContent: 'center'}}>
                         <Image source={require('../assets/images/Enter_Number_Icon.png')}

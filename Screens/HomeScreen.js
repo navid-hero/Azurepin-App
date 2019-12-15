@@ -50,9 +50,11 @@ export default class HomeScreen extends React.Component {
             // console.log("Is connected?", state.isConnected);
             if (!state.isConnected)
                 Alert.alert("Connection Error!", "You are not connected to the internet, application may not work correctly.");
+
+            if (!this.requestLocationPermission())
+                Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
         });
-        if (!this.requestLocationPermission())
-            Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
+
 
         // let drafts = [
         //     {id: 1, title: "GooOoooOoooOoooAL", time: "5M"},

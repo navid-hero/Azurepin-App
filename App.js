@@ -10,6 +10,7 @@ import PlayScreen from "./Screens/PlayScreen";
 import PlayHalfScreen from "./Screens/PlayHalfScreen";
 import DetailScreen from "./Screens/DetailScreen";
 import SettingScreen from "./Screens/SettingScreen";
+import TestCameraScreen from "./Screens/TestCameraScreen";
 import CustomHeader from "./Components/CustomHeader";
 
 const MainNavigator = createStackNavigator({
@@ -22,6 +23,7 @@ const MainNavigator = createStackNavigator({
     PlayHalf: {screen: PlayHalfScreen, navigationOptions: ({navigation}) => ({header: null})},
     Detail: {screen: DetailScreen, navigationOptions: ({navigation}) => ({header: null})},
     Setting: {screen: SettingScreen, navigationOptions: ({navigation}) => ({header: null})},
+    TestCamera: {screen: TestCameraScreen, navigationOptions: ({navigation}) => ({header: null})},
 });
 
 export default createAppContainer(MainNavigator);

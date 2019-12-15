@@ -480,7 +480,7 @@ export default class DropPinScreen extends React.Component {
                     {/*<Image source={this.state.video ? require('../assets/images/Pin-Video.png') : require('../assets/images/Audio.png')}*/}
                            {/*style={{width: 330, height: 330, marginTop: 5}}/>*/}
 
-                    <View style={{margin: 5, height: 330}}>
+                    <View style={{margin: 3, height: 330}}>
                         {this.state.audio ?
                             <View>
                                 <Image source={require('../assets/images/Audio.png')}/>
@@ -518,7 +518,7 @@ export default class DropPinScreen extends React.Component {
                                     </TouchableOpacity>
                                 </View>
                                 :
-                                <View style={{flex: 1, flexDirection: 'column', backgroundColor: 'black'}}>
+                                <View style={{flex: 1, flexDirection: 'column', backgroundColor: 'black', overflow: 'hidden'}}>
                                     <RNCamera ref={cam => {this.camera = cam;}}
                                               style={{flex: 1}}
                                               type={type}
