@@ -217,7 +217,7 @@ export default class DropPinScreen extends React.Component {
                 {
                     key: "Pin", value: {
                         name: fileName,
-                        type: "video/mp4",
+                        type: type+"/mp4",
                         uri: type === "video" ? this.state.videoToShow : this.state.audioToPlay
                     }
                 },
@@ -281,7 +281,22 @@ export default class DropPinScreen extends React.Component {
             if (this.state.recording === "start") { // start recording
                 this.setDateTimeLocation();
                 this.animate();
+
+                const path = Platform.select({
+                    ios: 'sound.m4a',
+                    android: 'sdcard/sound.mp4', // should give extra dir name in android. Won't grant permission to the first level of dir.
+                });
+
+                const audioSet = {
+                    AudioEncoderAndroid: AudioRecorderPlayer.AAC,
+                    AudioSourceAndroid: AudioRecorderPlayer.MIC,
+                    AVEncoderAudioQualityKeyIOS: AudioRecorderPlayer.high,
+                    AVNumberOfChannelsKeyIOS: 2,
+                    AVFormatIDKeyIOS: AudioRecorderPlayer.aac,
+                };
+
                 const uri = await audioRecorderPlayer.startRecorder();
+
                 console.log("audio", uri);
                 audioRecorderPlayer.addRecordBackListener((e) => {
                     this.setState({
@@ -360,13 +375,13 @@ export default class DropPinScreen extends React.Component {
                     Pin: {
                         name: fileName,
                         type: "video/mp4",
-                        uri: type === "video" ? this.state.videoToShow : this.state.audioToPlay
+                        uri: this.state.video ? this.state.videoToShow : this.state.audioToPlay
                     },
                     Latitude: this.state.latitude.toString(),
                     Longitude: this.state.longitude.toString(),
                     Location: this.state.location.toString(),
                     Duration: "0",
-                    Type: this.state.video === "video" ? "2" : "1"
+                    Type: this.state.video ? "2" : "1"
                 };
 
                 AsyncStorage.getItem('drafts', (err, result) => {

@@ -25,18 +25,8 @@ export default class LoginScreen extends React.Component {
 
     componentDidMount() {
         AsyncStorage.getItem('accepted_agreement', (err, value) => {
-            if (!value) {
-                /*Alert.alert(
-                    'Terms and Conditions',
-                    'Please confirm that you have read and agree to the Azurepin terms and conditions agreement.',
-                    [
-                        {text: 'DISAGREE', onPress: () => BackHandler.exitApp() },
-                        {text: 'AGREE', onPress: () => AsyncStorage.setItem('accepted_agreement', true) },
-                    ],
-                    {cancelable: false},
-                );*/
+            if (!value)
                 this.setState({termsModal: true});
-            }
         });
     }
 

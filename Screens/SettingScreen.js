@@ -1,7 +1,8 @@
 import React from 'react';
-import {AsyncStorage, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View} from "react-native";
+import {AsyncStorage, Image, Modal, ScrollView, StyleSheet, ToastAndroid, Text, TouchableOpacity, View} from "react-native";
 import {Colors} from "../Components/Colors";
 import Api from '../Components/Api';
+import { Rating } from 'react-native-elements';
 const api = new Api();
 
 export default class SettingScreen extends React.Component {
@@ -47,6 +48,7 @@ export default class SettingScreen extends React.Component {
                         let minute = dateTime.getMinutes();
 
                         bookmarks.push({
+                            id: response.bookmarks[i].pinId,
                             title: response.bookmarks[i].tile,
                             subtitle: month + " " + date + " " + year + " " + hour + ":" + minute,
                             location: response.bookmarks[i].location,
@@ -59,6 +61,24 @@ export default class SettingScreen extends React.Component {
             });
         })
     }
+
+    deleteBookmark = (index) => {
+        AsyncStorage.getItem('userId', (err, userId) => {
+            api.postRequest('Pin/DeleteBookmark', JSON.stringify([
+                {key: "UserId", value: userId},
+                {key: "BookmarkId", value: index}
+            ])).then((response) => {
+                if (response.result === "success") {
+                    ToastAndroid.show('bookmarked removed successfully', ToastAndroid.SHORT);
+                    this.setState({bookmarks: this.state.bookmarks.filter(obj => {
+                        if (obj.id !== index) return obj;
+                    })});
+                } else {
+                    ToastAndroid.show(response.message, ToastAndroid.SHORT);
+                }
+            });
+        });
+    };
 
     changeActiveTab(tab) {
         this.setState({active: tab});
@@ -91,6 +111,7 @@ export default class SettingScreen extends React.Component {
                     );
                 }));
         } else if (this.state.active === 'bookmark') {
+            const data = this;
             if (this.state.bookmarks && this.state.bookmarks.length > 0) {
                 content = (this.state.bookmarks.map(function (item, key) {
                     return (
@@ -114,12 +135,17 @@ export default class SettingScreen extends React.Component {
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
                                 marginLeft: 5
-                            }}
-                                  pointerEvents="none">
-                                <Image source={require('../assets/images/Rated.png')}
-                                       style={{width: 63, height: 7, margin: 5}}/>
-                                <Image source={require('../assets/images/Icon.png')}
-                                       style={{width: 14, height: 18, margin: 5}}/>
+                            }}>
+                                <Rating
+                                    type='heart'
+                                    imageSize={15}
+                                    startingValue={item.rate}
+                                    readonly={true}
+                                />
+                                <TouchableOpacity onPress={() => data.deleteBookmark(item.id)}>
+                                    <Image source={require('../assets/images/Icon.png')}
+                                           style={{width: 14, height: 18, margin: 5}}/>
+                                </TouchableOpacity>
                             </View>
                         </View>
                     );

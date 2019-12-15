@@ -6,6 +6,8 @@ import Api from '../Components/Api';
 import Video from 'react-native-video';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import ViewPager from '@react-native-community/viewpager';
+import { Rating } from 'react-native-elements';
+import {Colors} from "../Components/Colors";
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
@@ -221,8 +223,9 @@ class PlayScreen extends React.Component {
                                 location = response;
 
                                 this.setState({
+                                    playback: false,
                                     pinId: coordinates[index].id,
-                                    title: coordinates[index].title,
+                                    title: "("+(index+1)+") "+coordinates[index].title,
                                     lng: coordinates[index].lng,
                                     lat: coordinates[index].lat,
                                     date: month + " " + date + " " + year,
@@ -243,6 +246,10 @@ class PlayScreen extends React.Component {
         });
     };
 
+    ratingCompleted(rating) {
+        console.log("Rating is: " + rating)
+    }
+
     render() {
         return (
             <View style={{flex: 1}}>
@@ -260,12 +267,13 @@ class PlayScreen extends React.Component {
                             this.onActionButtonPressed(this.state.optionArray[index]);
                         }}
                     />
-                    <TouchableOpacity style={{margin:10}}
-                                      onPress={() => this.showActionSheet()}>
+                    <TouchableOpacity style={{margin:10, flexDirection: 'row'}}
+                                      onPress={() => {if(this.state.coordinates.length > 0) this.showActionSheet();}}>
                         <Image
                             source={require('../assets/images/More.png')}
                             style={{ width: 20, height: 19 }}
                         />
+                        <Text style={{color: Colors.textMuted, fontSize: 12}}>  ({this.state.coordinates.length})</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={() => {this.props.navigation.navigate('Setting');}}>
@@ -284,7 +292,7 @@ class PlayScreen extends React.Component {
                     </TouchableOpacity>
                 </View>
 
-                <View style={{flex:1, margin: 20, marginTop: 0}}>
+                {this.state.coordinates.length > 0 ? <View style={{flex:1, margin: 20, marginTop: 0}}>
                     <View style={{flex:1, flexDirection: 'row', justifyContent: 'space-between'}}>
                         <View style={{flex: 8}}>
                             <Text style={styles.titleText}>{this.state.title}</Text>
@@ -300,15 +308,16 @@ class PlayScreen extends React.Component {
                     <ViewPager style={{flex:6}} initialPage={0} onPageSelected={(e) => this.onPageSelected(e)}>
                         {this.state.coordinates.map((item, key) => {
                             return (
-                                <View key={key}>
+                                <View key={key} style={{backgroundColor: '$#9f9f9'}}>
                                     {this.state.audio.length > 0 ?
                                         <Image source={require('../assets/images/Audio.png')}
                                                style={{width: '100%', height: '100%'}} />
                                         :
                                         <Video source={{uri: this.state.video}}
                                                ref={(ref) => {this.player = ref }}
-                                               paused={this.state.playBack}
-                                               onEnd={() => { this.setState({playBack: true}) }}
+                                               resizeMode="cover"
+                                               paused={!this.state.playBack}
+                                               onEnd={() => { this.setState({playBack: false}) }}
                                                style={{width: '100%', height: '100%'}}
                                         />
                                     }
@@ -326,10 +335,17 @@ class PlayScreen extends React.Component {
                                 <Image source={this.state.mute ? require('../assets/images/Mute.png') : require('../assets/images/More-Volume.png')}
                                        style={{ height: 19, width: 29 }} />
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => {this.rate()}}>
-                                <Image source={this.state.rated ? require('../assets/images/Rated.png') : require('../assets/images/Rate.png')}
-                                       style={{ height: 11, width: 95 }} />
-                            </TouchableOpacity>
+                            {/*<TouchableOpacity onPress={() => {this.rate()}}>*/}
+                                {/*<Image source={this.state.rated ? require('../assets/images/Rated.png') : require('../assets/images/Rate.png')}*/}
+                                       {/*style={{ height: 11, width: 95 }} />*/}
+                            {/*</TouchableOpacity>*/}
+                            <Rating
+                                type='heart'
+                                ratingCount={5}
+                                imageSize={20}
+                                ratingColor={Colors.primaryDark}
+                                onFinishRating={this.ratingCompleted}
+                            />
                             <TouchableOpacity onPress={() => {this.onShare()}}>
                                 <Image source={require('../assets/images/Share.png')}
                                        style={{ height: 27, width: 19 }} />
@@ -350,6 +366,10 @@ class PlayScreen extends React.Component {
                         </View>
                     </View>
                 </View>
+                :
+                <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                    <Text style={{color: Colors.text, textAlign: 'center', padding: 10}}>No playlist available for this area at the moment!</Text>
+                </View>}
             </View>
 
         );
