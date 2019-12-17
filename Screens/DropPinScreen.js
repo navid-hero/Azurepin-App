@@ -20,6 +20,8 @@ import ProgressBar from 'react-native-progress/Bar';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import {Colors} from "../Components/Colors";
 import Api from '../Components/Api';
+import {AudioRecorder, AudioUtils} from "react-native-audio";
+import Sound from 'react-native-sound';
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
@@ -50,9 +52,15 @@ export default class DropPinScreen extends React.Component {
             end: "1:00",
             modalVisible: false,
             drafts: [],
-            audioToPlay: null,
             recordSecs: "",
-            recordTime: ""
+            recordTime: "",
+
+            currentTime: 0.0,
+            paused: false,
+            stoppedRecording: false,
+            finished: false,
+            audioPath: AudioUtils.DocumentDirectoryPath + '/sound.aac',
+            hasPermission: undefined,
         };
 
         this.months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -63,9 +71,28 @@ export default class DropPinScreen extends React.Component {
             this.handleBackButtonPressAndroid
         );
 
-        AsyncStorage.getItem('drafts', (err, drafts) => {;
+        AsyncStorage.getItem('drafts', (err, drafts) => {
             console.log("draftssss", drafts);
             this.setState({drafts: JSON.parse(drafts)});
+        });
+
+        AudioRecorder.requestAuthorization().then((isAuthorised) => {
+            this.setState({ hasPermission: isAuthorised });
+
+            if (!isAuthorised) return;
+
+            this.prepareRecordingPath(this.state.audioPath);
+
+            AudioRecorder.onProgress = (data) => {
+                this.setState({currentTime: Math.floor(data.currentTime)});
+            };
+
+            AudioRecorder.onFinished = (data) => {
+                // Android callback comes in the form of a promise instead.
+                if (Platform.OS === 'ios') {
+                    this._finishRecording(data.status === "OK", data.audioFileURL, data.audioFileSize);
+                }
+            };
         });
 
 
@@ -82,6 +109,16 @@ export default class DropPinScreen extends React.Component {
                     this.requestPermissions(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, 'Access Microphone', 'Azurepin needs access to your microphone')
                         .then((response) => {console.log(response)});
             });
+    }
+
+    prepareRecordingPath(audioPath){
+        AudioRecorder.prepareRecordingAtPath(audioPath, {
+            SampleRate: 22050,
+            Channels: 1,
+            AudioQuality: "Low",
+            AudioEncoding: "aac",
+            AudioEncodingBitRate: 32000
+        });
     }
 
     async requestPermissions(permission, title, message) {
@@ -144,54 +181,7 @@ export default class DropPinScreen extends React.Component {
                     ? RNCamera.Constants.FlashMode.on
                     : RNCamera.Constants.FlashMode.off
         });
-
-        // if (Platform.OS === 'ios') {
-        //     this.setState({isTorchOn: newTorchState}, function() {
-        //         Torch.switchState(newTorchState);
-        //     });
-        // } else {
-        //     try {
-        //         const cameraAllowed = await Torch.requestCameraPermission(
-        //             'Camera Permissions', // dialog title
-        //             'We require camera permissions to use the torch on the back of your phone.' // dialog body
-        //         );
-        //
-        //         if (cameraAllowed)
-        //             this.setState({isTorchOn: newTorchState}, function() {
-        //                 Torch.switchState(newTorchState);
-        //             });
-        //
-        //     } catch (e) {
-        //         ToastAndroid.show(
-        //             'We seem to have an issue accessing your torch',
-        //             ToastAndroid.SHORT
-        //         );
-        //     }
-        // }
     };
-
-    // takePicture = async function(camera) {
-    //     const options = { quality: 0.5, base64: true };
-    //     const data = await camera.takePictureAsync(options);
-    //     //  eslint-disable-next-line
-    //     console.log(data.uri);
-    // };
-
-    takePhoto = async () => {
-        // const { onTakePhoto } = this.props;
-        const options = {
-            quality: 0.4,
-            base64: true,
-        };
-        const data = await this.camera.takePictureAsync(options);
-        this.onTakePhoto(data.base64);
-    };
-
-    onTakePhoto(photo) {
-        // console.log("data:image/png;base64"+photo);
-        this.setState({imageToShow: "data:image/png;base64,"+photo});
-    }
-
 
     animate() {
         let startInt = 0, endInt = 60, videoTime = 0, start = "", end = "";
@@ -236,14 +226,18 @@ export default class DropPinScreen extends React.Component {
         );
         // console.log(location);
 
-        let now = new Date;
+        let now = new Date(Date.now());
         let date = this.months[now.getMonth()] + " " + now.getDate() + ", " + now.getFullYear();
-        let time = now.getHours() + ":" + now.getMinutes();
+
+        let hour = now.getHours().toString().length < 2 ? "0"+now.getHours() : now.getHours();
+        let minutes = now.getMinutes().toString().length < 2 ? "0"+now.getMinutes() : now.getMinutes();
+        let time = hour + ":" + minutes;
         this.setState({date, time});
     }
 
     dropNewPin(type, isDraft="0") {
         let currentTimestamp = Date.now();
+
         AsyncStorage.getItem('userId', (err, userId) => {
             let fileName = userId.toString() + "_" + currentTimestamp.toString() + ".mp4";
             console.log("start uploading...");
@@ -252,8 +246,8 @@ export default class DropPinScreen extends React.Component {
                 {
                     key: "Pin", value: {
                         name: fileName,
-                        type: type+"/mp4",
-                        uri: type === "video" ? this.state.videoToShow : this.state.audioToPlay
+                        type: type === "video" ? "video/mp4" : "audio/aac",
+                        uri: type === "video" ? this.state.videoToShow : 'file://'+this.state.audioPath
                     }
                 },
                 {key: "UserId", value: userId}
@@ -276,11 +270,13 @@ export default class DropPinScreen extends React.Component {
                         if (responseJson && responseJson.result === "success") {
                             let message = isDraft === "0" ? 'Your pin dropped successfully' : 'Your recording has been drafted!';
                             ToastAndroid.show(message, ToastAndroid.LONG);
-                            this.putDraftInStorage(responseJson.pinId);
+                            if (isDraft === "1") this.putDraftInStorage(responseJson.pinId);
                         } else {
                             ToastAndroid.show('Unable to communicate with server', ToastAndroid.LONG);
                         }
                     });
+                } else {
+                    ToastAndroid.show('Unable to upload file', ToastAndroid.LONG);
                 }
             });
             setTimeout(() => {this.props.navigation.pop();}, 1000);
@@ -316,35 +312,12 @@ export default class DropPinScreen extends React.Component {
                 this.setDateTimeLocation();
                 this.animate();
 
-                const path = Platform.select({
-                    ios: 'sound.m4a',
-                    android: 'sdcard/sound.mp4', // should give extra dir name in android. Won't grant permission to the first level of dir.
-                });
+                this._record();
 
-                const audioSet = {
-                    AudioEncoderAndroid: AudioRecorderPlayer.AAC,
-                    AudioSourceAndroid: AudioRecorderPlayer.MIC,
-                    AVEncoderAudioQualityKeyIOS: AudioRecorderPlayer.high,
-                    AVNumberOfChannelsKeyIOS: 2,
-                    AVFormatIDKeyIOS: AudioRecorderPlayer.aac,
-                };
-
-                const uri = await audioRecorderPlayer.startRecorder();
-
-                console.log("audio", uri);
-                audioRecorderPlayer.addRecordBackListener((e) => {
-                    this.setState({
-                        recording: "recording",
-                        recordSecs: e.current_position,
-                        recordTime: audioRecorderPlayer.mmssss(Math.floor(e.current_position)),
-                    });
-                });
             } else if (this.state.recording === "recording") { // stop recording
-                const result = await audioRecorderPlayer.stopRecorder();
+                this._stop();
                 clearInterval(this.state.refreshIntervalId);
-                audioRecorderPlayer.removeRecordBackListener();
-                this.setState({recording: "end", audioToPlay: result, recordSecs: 0});
-                console.log("audio result", result);
+                this.setState({recording: "end"});
             } else {
                 if (this.state.title.length > 0) {
                     this.dropNewPin("audio");
@@ -361,34 +334,15 @@ export default class DropPinScreen extends React.Component {
         this.setState({videoToShow: video});
     };
 
-    togglePlay = async () => {
+    togglePlay = () => {
         if (this.state.video) {
             this.setState({playBack: !this.state.playBack});
         } else if (this.state.audio) {
-            if (this.state.playBack === true) {
-                console.log('onStartPlay');
-                const msg = await audioRecorderPlayer.startPlayer();
-                console.log(msg);
-                audioRecorderPlayer.addPlayBackListener((e) => {
-                    if (e.current_position === e.duration) {
-                        console.log('finished');
-                        const stop = audioRecorderPlayer.stopPlayer();
-                        console.log("stop", stop);
-                        this.setState({playBack: !this.state.playBack});
-                        audioRecorderPlayer.removePlayBackListener();
-                    }
-                    this.setState({
-                        currentPositionSec: e.current_position,
-                        currentDurationSec: e.duration,
-                        playTime: audioRecorderPlayer.mmssss(Math.floor(e.current_position)),
-                        duration: audioRecorderPlayer.mmssss(Math.floor(e.duration)),
-                    });
-                });
+            if (this.state.playBack) {
+                this.setState({playBack: false}, () => {this._play();});
             } else {
-                const msg = await audioRecorderPlayer.pausePlayer();
-                console.log("msg", msg);
+
             }
-            this.setState({playBack: !this.state.playBack});
         }
     };
 
@@ -417,7 +371,7 @@ export default class DropPinScreen extends React.Component {
                 Pin: {
                     name: fileName,
                     type: "video/mp4",
-                    uri: this.state.video ? this.state.videoToShow : this.state.audioToPlay
+                    uri: this.state.video ? this.state.videoToShow : this.state.audioPath
                 },
                 Latitude: this.state.latitude.toString(),
                 Longitude: this.state.longitude.toString(),
@@ -459,7 +413,7 @@ export default class DropPinScreen extends React.Component {
     }
 
     onExit = () => {
-        if (this.state.videoToShow.length > 0 || this.state.audioToPlay) {
+        if (this.state.videoToShow.length > 0 || this.state.audioPath) {
             Alert.alert(
                 'Discard Recording?',
                 'If you go back now, you will \n' +
@@ -476,6 +430,82 @@ export default class DropPinScreen extends React.Component {
             this.props.navigation.goBack();
         }
     };
+
+
+    async _stop() {
+        if (this.state.recording !== "recording") {
+            console.warn('Can\'t stop, not recording!');
+            return;
+        }
+
+        this.setState({stoppedRecording: true, recording: "end", paused: false});
+
+        try {
+            const filePath = await AudioRecorder.stopRecording();
+
+            if (Platform.OS === 'android') {
+                this._finishRecording(true, filePath);
+            }
+            return filePath;
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async _play() {
+        if (this.state.recording === "recording") {
+            await this._stop();
+        }
+
+        // These timeouts are a hacky workaround for some issues with react-native-sound.
+        // See https://github.com/zmxv/react-native-sound/issues/89.
+        setTimeout(() => {
+            var sound = new Sound(this.state.audioPath, '', (error) => {
+                if (error) {
+                    console.log('failed to load the sound', error);
+                }
+            });
+
+            setTimeout(() => {
+                sound.play((success) => {
+                    if (success) {
+                        this.setState({playback: true});
+                    } else {
+                        console.log('playback failed due to audio decoding errors');
+                    }
+                });
+            }, 100);
+        }, 100);
+    }
+
+    async _record() {
+        if (this.state.recording !== "start") {
+            console.warn('Already recording!');
+            return;
+        }
+
+        if (!this.state.hasPermission) {
+            console.warn('Can\'t record, no permission granted!');
+            return;
+        }
+
+        if(this.state.stoppedRecording){
+            this.prepareRecordingPath(this.state.audioPath);
+        }
+
+        this.setState({recording: "recording", paused: false});
+
+        try {
+            const filePath = await AudioRecorder.startRecording();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    _finishRecording(didSucceed, filePath, fileSize) {
+        this.setState({ finished: didSucceed });
+        console.log(`Finished recording of duration ${this.state.currentTime} seconds at path: ${filePath} and size of ${fileSize || 0} bytes`);
+    }
 
     render() {
         const { type, flashMode } = this.state;
@@ -550,14 +580,14 @@ export default class DropPinScreen extends React.Component {
                         {this.state.audio ?
                             <View>
                                 <Image source={require('../assets/images/Audio.png')}/>
-                                {this.state.audioToPlay ?
+                                {this.state.finished ?
                                 <TouchableOpacity style={styles.playContent}
                                                   onPress={() => {
                                                       this.togglePlay()
                                                   }}>
-                                    <Image
-                                        source={this.state.playBack ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
-                                        style={{height: 60, width: 60}}/>
+                                    {this.state.playBack ?
+                                        <Image source={require('../assets/images/Play-Button.png')}
+                                               style={{height: 60, width: 60}}/> : <Text></Text> }
                                 </TouchableOpacity> : <Text></Text>}
                             </View>
                             :

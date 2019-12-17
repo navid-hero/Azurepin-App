@@ -55,6 +55,7 @@ export default class HomeScreen extends React.Component {
                 Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
         });
 
+        AsyncStorage.getItem('userId', (err, userId) => {console.log(userId)});
 
         // let drafts = [
         //     {id: 1, title: "GooOoooOoooOoooAL", time: "5M"},
@@ -120,7 +121,7 @@ export default class HomeScreen extends React.Component {
                                             title: pins[i].title
                                         });
 
-                                    this.setState({coordinates});
+                                    this.setState({coordinates}, () => {this.forceUpdate();});
                                 }
                                 else
                                     Alert.alert('Woops!', 'Looks something went wrong!');

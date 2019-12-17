@@ -1,5 +1,5 @@
 import React from 'react';
-import {Alert, AsyncStorage, BackHandler, Image, Modal, Text, View, TextInput, TouchableOpacity, StyleSheet, ScrollView} from "react-native";
+import {ActivityIndicator, Alert, AsyncStorage, BackHandler, Image, Modal, Text, View, TextInput, TouchableOpacity, StyleSheet, ScrollView} from "react-native";
 import { StackActions, NavigationActions } from 'react-navigation';
 import Api from '../Components/Api';
 import {Colors} from "../Components/Colors";
@@ -16,6 +16,7 @@ export default class LoginScreen extends React.Component {
         super(props);
 
         this.state = {
+            sendRequest: false,
             email: "",
             emailValidationFailed: false,
             termsModal: false,
@@ -41,8 +42,10 @@ export default class LoginScreen extends React.Component {
         if (this.state.email.length < 6) {
             this.setState({emailValidationFailed: true});
         } else {
+            this.setState({sendRequest: true});
             api.postRequest("User/SubmitEmail", JSON.stringify([{key: "Email", value: this.state.email}]))
                 .then((response) => {
+                    this.setState({sendRequest: false});
                     if (response && (response.result === "success" || response.result === "duplicate")) {
                         AsyncStorage.setItem('userId', response.userId.toString());
                         this.props.navigation.dispatch(resetAction);
@@ -134,12 +137,17 @@ export default class LoginScreen extends React.Component {
                                            onChangeText={(email) => this.onChangeEmail(email)} />
                             </View >
                             <Text style={{color: Colors.danger, display: this.state.emailValidationFailed ? 'flex' : 'none'}}>Please enter a valid email address</Text>
-                            <TouchableOpacity
+
+                                <TouchableOpacity
                                 style={styles.submitButton}
                                 onPress={() => this.submitEmail()}
+                                disabled={this.state.sendRequest}
                             >
-                                <Text style={styles.submitButtonText}>Submit</Text>
+                                    {this.state.sendRequest ?
+                                        <ActivityIndicator size="small" color={Colors.primary}/> :
+                                <Text style={styles.submitButtonText}>Submit</Text>}
                             </TouchableOpacity>
+
                         </View>
                     </View>
                 </View>

@@ -1,7 +1,8 @@
 import React from 'react';
-import {Alert, AsyncStorage, Image, Text, View, TextInput, TouchableOpacity, StyleSheet} from "react-native";
+import {ActivityIndicator, Alert, AsyncStorage, Image, Text, View, TextInput, TouchableOpacity, StyleSheet} from "react-native";
 import { StackActions, NavigationActions } from 'react-navigation';
 import Api from '../Components/Api';
+import {Colors} from "../Components/Colors";
 const resetAction = StackActions.reset({
     index: 0,
     actions: [NavigationActions.navigate({ routeName: 'Home' })],
@@ -14,6 +15,7 @@ export default class CheckPasswordScreen extends React.Component {
         super(props);
 
         this.state = {
+            sendRequest: false,
             code: ""
         };
     }
@@ -23,18 +25,21 @@ export default class CheckPasswordScreen extends React.Component {
     }
 
     submitCode = () => {
-        AsyncStorage.getItem('userId', (err, value) => {
-            api.postRequest("User/SubmitSignupKey", JSON.stringify([{key: "UserId", value: value}, {key: "Key", value: this.state.code}]))
-                .then((response) => {
-                    if (response && response.result === "success")
-                        this.props.navigation.dispatch(resetAction);
-                    else {
-                        Alert.alert('Woops!', 'Looks something went wrong!');
-                    }
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+        this.setState({sendRequest: true}, () => {
+            AsyncStorage.getItem('userId', (err, value) => {
+                api.postRequest("User/SubmitSignupKey", JSON.stringify([{key: "UserId", value: value}, {key: "Key", value: this.state.code}]))
+                    .then((response) => {
+                        this.setState({sendRequest: false});
+                        if (response && response.result === "success")
+                            this.props.navigation.dispatch(resetAction);
+                        else {
+                            Alert.alert('Woops!', 'Looks something went wrong!');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            });
         });
     };
 
@@ -62,7 +67,9 @@ export default class CheckPasswordScreen extends React.Component {
                             style={styles.submitButton}
                             onPress={() => this.submitCode()}
                         >
-                            <Text style={styles.submitButtonText}>Done</Text>
+                            {this.state.sendRequest ?
+                                <ActivityIndicator size="small" color={Colors.primary}/> :
+                            <Text style={styles.submitButtonText}>Done</Text>}
                         </TouchableOpacity>
                     </View>
                 </View>

@@ -1,5 +1,7 @@
 const baseUrl = "http://185.173.106.155/";
+
 export default class Api {
+
     async postRequest(url, data) {
         let dataArray = JSON.parse(data);
         let formData = new FormData();
