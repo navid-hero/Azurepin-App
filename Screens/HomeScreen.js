@@ -351,6 +351,7 @@ const styles = StyleSheet.create({
         borderBottomColor: '#c7c7c7'
     },
     searchResultItemText: {
-        color: '#707070'
+        color: '#707070',
+        paddingTop: 5
     }
 });

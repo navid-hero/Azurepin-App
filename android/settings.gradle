@@ -1,11 +1,11 @@
 rootProject.name = 'AzurepinNew'
-include ':mapbox-react-native-mapbox-gl'
-project(':mapbox-react-native-mapbox-gl').projectDir = new File(rootProject.projectDir, '../node_modules/@mapbox/react-native-mapbox-gl/android/rctmgl')
-include ':react-native-camera'
-project(':react-native-camera').projectDir = new File(rootProject.projectDir,'../node_modules/react-native-camera/android')
-include ':react-native-video'
-project(':react-native-video').projectDir = new File(rootProject.projectDir,'../node_modules/react-native-video/android-exoplayer')
-include ':react-native-audio-recorder-player'
-project(':react-native-audio-recorder-player').projectDir = new File(rootProject.projectDir,'../node_modules/react-native-audio-recorder-player/android')
+//include ':mapbox-react-native-mapbox-gl'
+//project(':mapbox-react-native-mapbox-gl').projectDir = new File(rootProject.projectDir, '../node_modules/@mapbox/react-native-mapbox-gl/android/rctmgl')
+//include ':react-native-camera'
+//project(':react-native-camera').projectDir = new File(rootProject.projectDir,'../node_modules/react-native-camera/android')
+//include ':react-native-video'
+//project(':react-native-video').projectDir = new File(rootProject.projectDir,'../node_modules/react-native-video/android-exoplayer')
+//include ':react-native-audio-recorder-player'
+//project(':react-native-audio-recorder-player').projectDir = new File(rootProject.projectDir,'../node_modules/react-native-audio-recorder-player/android')
 apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
 include ':app'

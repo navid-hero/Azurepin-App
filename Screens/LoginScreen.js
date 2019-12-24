@@ -3,6 +3,7 @@ import {ActivityIndicator, Alert, AsyncStorage, BackHandler, Image, Modal, Text,
 import { StackActions, NavigationActions } from 'react-navigation';
 import Api from '../Components/Api';
 import {Colors} from "../Components/Colors";
+import { WebView } from 'react-native-webview';
 
 const resetAction = StackActions.reset({
     index: 0,
@@ -20,7 +21,8 @@ export default class LoginScreen extends React.Component {
             email: "",
             emailValidationFailed: false,
             termsModal: false,
-            webModal: false
+            webModal: false,
+            webViewLoading: true
         };
     }
 
@@ -107,15 +109,20 @@ export default class LoginScreen extends React.Component {
                     transparent={false}
                     visible={this.state.webModal}
                 >
-                    <ScrollView style={{flex: 1}}>
+                    <View style={{flex: 1}}>
                         <View style={{borderBottomWidth: 1, borderBottomColor: Colors.border, margin: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <Text>Terms and Conditions</Text>
+                            <Text>{this.state.webModalName}</Text>
                             <TouchableOpacity style={{padding: 10}} onPress={() => {this.setState({webModal: false})}}>
                                 <Image source={require('../assets/images/Cancel.png')} style={{width: 12, height: 12}} />
                             </TouchableOpacity>
                         </View>
-                        {/*<WebView source={{uri: 'http://azurepins.com/terms.php'}} style={{marginTop: 5}} />*/}
-                    </ScrollView>
+                        {this.state.webViewLoading &&
+                        <View style={{justifyContent: 'center', alignItems: 'center'}}>
+                            <ActivityIndicator size="large" color={Colors.primary}/>
+                            <Text style={{color: Colors.text}}>Please wait ...</Text>
+                        </View>}
+                        <WebView source={{uri: 'http://azurepins.com/terms.php'}} onLoadEnd={() => this.setState({webViewLoading: false})} />
+                    </View>
                 </Modal>
                 <View style={{flex:1, alignItems: 'center'}}>
                     <View style={{flex:1, justifyContent: 'center'}}>
@@ -145,9 +152,13 @@ export default class LoginScreen extends React.Component {
                             >
                                     {this.state.sendRequest ?
                                         <ActivityIndicator size="small" color={Colors.primary}/> :
-                                <Text style={styles.submitButtonText}>Submit</Text>}
+                                <View>
+                                    <Text style={styles.submitButtonText}>Submit</Text>
+                                </View>}
                             </TouchableOpacity>
-
+                            {this.state.sendRequest && <View style={{justifyContent: 'center', alignItems: 'center'}}>
+                                <Text style={{color: Colors.text}}>Please wait ...</Text>
+                            </View>}
                         </View>
                     </View>
                 </View>
@@ -189,7 +200,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#EFEFEF',
         borderRadius:50,
         width: 100,
-        margin: 40
+        margin: 40,
+        marginBottom: 10,
     },
     submitButtonText: {
         color: '#007BFE',

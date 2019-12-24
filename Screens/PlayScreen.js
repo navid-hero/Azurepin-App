@@ -1,5 +1,5 @@
 import React from 'react';
-import {AsyncStorage, Clipboard, Image, Share, Text, ToastAndroid, TouchableOpacity, View} from "react-native";
+import {ActivityIndicator, AsyncStorage, Clipboard, Image, Share, Text, ToastAndroid, TouchableOpacity, View} from "react-native";
 import ActionSheet from 'react-native-actionsheet';
 import {withNavigation} from "react-navigation";
 import Api from '../Components/Api';
@@ -8,6 +8,7 @@ import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import ViewPager from '@react-native-community/viewpager';
 import { Rating } from 'react-native-elements';
 import {Colors} from "../Components/Colors";
+import RNFetchBlob from 'rn-fetch-blob'
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
@@ -37,9 +38,11 @@ class PlayScreen extends React.Component {
             currentDurationSec: "",
             playTime: "",
             duration: "",
+            hasLiked: false,
             optionArray: ['Report', 'Bookmark', 'Copy Link', 'Save', 'Cancel'],
             cancelButtonIndex: 4,
-            destructiveButtonIndex: 0
+            destructiveButtonIndex: 0,
+            videoLoading: false
         };
     }
     componentDidMount() {
@@ -147,21 +150,17 @@ class PlayScreen extends React.Component {
         this.resetActionSheet();
     }
 
-    async changePlayIcon() {
-        if (this.state.video.length > 0) {
-            this.setState({playBack: !this.state.playBack} , () => {this.forceUpdate();});
-        } else if (this.state.audio.length > 0) {
-            if (this.state.playBack === false) {
-                console.log('onStartPlay');
-                const msg = await audioRecorderPlayer.startPlayer(this.state.audio);
-                console.log(msg);
+    async togglePlay() {
+        if (this.state.video) {
+            this.setState({playBack: !this.state.playBack});
+        } else if (this.state.audio) {
+            if (!this.state.playBack) {
+                await audioRecorderPlayer.startPlayer(this.state.audio).then(() => this.setState({playBack: true}));
                 audioRecorderPlayer.addPlayBackListener((e) => {
                     if (e.current_position === e.duration) {
-                        console.log('finished');
-                        const stop = audioRecorderPlayer.stopPlayer();
-                        console.log("stop", stop);
-                        this.setState({playBack: !this.state.playBack});
+                        audioRecorderPlayer.stopPlayer().then(() => this.setState({playBack: false}));
                         audioRecorderPlayer.removePlayBackListener();
+                        this.setState({playBack: false});
                     }
                     this.setState({
                         currentPositionSec: e.current_position,
@@ -171,12 +170,13 @@ class PlayScreen extends React.Component {
                     });
                 });
             } else {
-                const msg = await audioRecorderPlayer.pausePlayer();
-                console.log("msg", msg);
+                await audioRecorderPlayer.pausePlayer().then(() => this.setState({playBack: false}));
             }
-            this.setState({playBack: !this.state.playBack} , () => {this.forceUpdate();});
+        } else {
+            //
         }
     }
+
     enableDisableSound() {
         this.setState({mute: !this.state.mute});
     }
@@ -205,6 +205,8 @@ class PlayScreen extends React.Component {
     onPageSelected = (e) => {
         let index = e.nativeEvent.position;
 
+        console.log("index", this.state.coordinates[index]);
+
         this.setState({
             playback: false,
             pinId: "",
@@ -223,7 +225,7 @@ class PlayScreen extends React.Component {
             if (!this.state.coordinates[index].downloaded) {
                 AsyncStorage.getItem('userId', (err, userId) => {
                     const { coordinates } = this.state;
-                    if (coordinates.length > 0) {
+                    if (coordinates && coordinates.length > 0) {
                         api.postRequest("Pin/GetPin", JSON.stringify([
                             {key: "UserId", value: userId},
                             {key: "PinId", value: coordinates[index].id},
@@ -239,37 +241,66 @@ class PlayScreen extends React.Component {
                                     let hour = dateTime.getHours();
                                     let minute = dateTime.getMinutes();
                                     let location = responseJson.location;
-
-                                    // api.getLocationName(coordinates[index].lat, coordinates[index].lng).then(response => {
-                                    //     location = response;
-                                    // });
-
                                     let url = "http://185.173.106.155/"+responseJson.url.replace("~/", "").replace(/ /g, "%20");
-                                    let video, audio;
+                                    let video = null, audio = responseJson.type === 1 ? url : null;
 
-                                    if (responseJson.type === 1) { // audio
-                                        video = ""; audio = url;
-                                    } else if (responseJson.type === 2) { // video
-                                        video = url; audio = "";
+
+                                    // set date time location
+                                    this.setState({
+                                        title: "("+(index+1)+") "+coordinates[index].title,
+                                        date: month + " " + date + " " + year + " / ",
+                                        time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
+                                        location: location,
+                                        audio: audio,
+                                        video: video
+                                    }, () => {
+                                        coordinates[index].details = {
+                                            pinId: coordinates[index].id,
+                                            rated: responseJson.hasLiked,
+                                            initialRateValue: (responseJson.likes / 20),
+                                            title: "("+(index+1)+") "+coordinates[index].title,
+                                            lng: coordinates[index].lng,
+                                            lat: coordinates[index].lat,
+                                            date: month + " " + date + " " + year + " / ",
+                                            time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
+                                            location: location,
+                                            uri: url,
+                                            audio: audio,
+                                            video: null
+                                        };
+                                    });
+
+                                    if (responseJson.type === 2) {
+                                        if (!coordinates[index].fileDownloaded) {
+                                            this.setState({videoLoading: true}, () => {
+                                                console.log("downloading...");
+                                                RNFetchBlob
+                                                    .config({
+                                                        fileCache: true,
+                                                        appendExt: 'mp4'
+                                                    })
+                                                    .fetch('GET', url)
+                                                    .then((res) => {
+                                                        this.setState({videoLoading: false}, () => {
+                                                            console.log('The file saved to ', res.path());
+                                                            coordinates[index].fileDownloaded = true;
+                                                            video = Platform.OS === 'android' ? ('file://' + res.path()) : res.path();
+                                                            this.setState({video: video}, () => {
+                                                                coordinates[index].details.audio = "";
+                                                                coordinates[index].details.video = video;
+                                                                coordinates[index].fileDownloaded = true;
+                                                            });
+                                                        });
+                                                    });
+                                            });
+                                        }
                                     }
 
-                                    coordinates[index].details = {
-                                        pinId: coordinates[index].id,
-                                        rated: false,
-                                        initialRateValue: 3,
-                                        title: "("+(index+1)+") "+coordinates[index].title,
-                                        lng: coordinates[index].lng,
-                                        lat: coordinates[index].lat,
-                                        date: month + " " + date + " " + year,
-                                        time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute),
-                                        location: location,
-                                        uri: url,
-                                        video,
-                                        audio
-                                    };
                                     coordinates[index].downloaded = true;
 
-                                    this.setState(this.state.coordinates[index].details, () => {this.forceUpdate();});
+                                    this.setState(this.state.coordinates[index].details, () => {
+                                        this.forceUpdate();
+                                    });
                                 }
                             });
                     }
@@ -344,10 +375,10 @@ class PlayScreen extends React.Component {
                                    onPageSelected={(e) => this.onPageSelected(e)}>
                             {this.state.coordinates.map((item, key) => {
                                 return (<View key={key}>
-                                    <View style={{flex:1, flexDirection: 'row', justifyContent: 'space-between'}}>
-                                        <View style={{flex: 8}}>
+                                    <View style={{flex:1, flexDirection: 'row', width: '100%'}}>
+                                        <View style={{flex: 6}}>
                                             <Text style={styles.titleText}>{this.state.title}</Text>
-                                            <Text style={styles.subtitleText}>{this.state.date} / {this.state.time} / {this.state.location}</Text>
+                                            <Text style={styles.subtitleText}>{this.state.date}{this.state.time}{this.state.location}</Text>
                                         </View>
                                         <View style={{flex: 1}}>
                                             <TouchableOpacity onPress={() => this.props.navigation.navigate('Detail', {lat: this.state.lat, lng: this.state.lng})}>
@@ -358,33 +389,52 @@ class PlayScreen extends React.Component {
                                     </View>
                                     <View style={{flex:6}} >
                                         <View key={key} style={{backgroundColor: '$#9f9f9'}}>
-                                            {this.state.audio.length > 0 ?
-                                                <Image source={require('../assets/images/Audio.png')}
-                                                       style={{width: '100%', height: '100%'}} />
+                                            {this.state.audio ?
+                                                <View>
+                                                    <Image source={require('../assets/images/Audio.png')}
+                                                           style={{width: '100%', height: '100%'}} />
+                                                    <TouchableOpacity style={styles.playContent} onPress={() => {this.togglePlay()}}>
+                                                        <Image source={this.state.playback ? require('../assets/images/Pasue-Button.png') : require('../assets/images/Play-Button.png')}
+                                                                   style={{ height: 62, width: 62 }} />
+                                                    </TouchableOpacity>
+                                                </View>
                                                 :
-                                                <Video source={{uri: this.state.video}}
-                                                       ref={(ref) => {this.player = ref }}
-                                                       resizeMode="cover"
-                                                       paused={!this.state.playBack}
-                                                       muted={this.state.mute}
-                                                       onEnd={() => { this.setState({playBack: false}) }}
-                                                       style={{width: '100%', height: '100%'}}
-                                                />
+                                                <View>
+                                                    <Video source={{uri: this.state.video}}
+                                                           ref={(ref) => {this.player = ref }}
+                                                           resizeMode="cover"
+                                                           paused={false/*!this.state.playBack*/}
+                                                           muted={this.state.mute}
+                                                        // onEnd={() => { this.setState({playBack: false}) }}
+                                                        // bufferConfig={{
+                                                        //     minBufferMs: 5000,
+                                                        //     maxBufferMs: 5000,
+                                                        //     bufferForPlaybackMs: 5000,
+                                                        //     bufferForPlaybackAfterRebufferMs: 5000
+                                                        // }}
+                                                        // posterResizeMode="contain"
+                                                        // onLoadStart={() => {this.setState({videoLoading: true})}}
+                                                        // onBuffer={() => {this.setState({videoLoading: true})}}
+                                                        // onLoad={() => {this.setState({videoLoading: false})}}
+                                                           repeat={true}
+                                                           style={{width: '100%', height: '100%'}}
+                                                    />
+                                                    <TouchableOpacity style={styles.playContent} onPress={() => {this.togglePlay()}}>
+                                                        {this.state.videoLoading ? <ActivityIndicator size="large" color={Colors.primary}/> : <Text></Text> }
+                                                    </TouchableOpacity>
+                                                </View>
                                             }
-                                            <TouchableOpacity style={styles.playContent} onPress={() => {this.changePlayIcon()}}>
-                                                    <Image source={this.state.playback ? require('../assets/images/Pasue-Button.png') : require('../assets/images/Play-Button.png')}
-                                                           style={{ height: 62, width: 62 }} />
-                                            </TouchableOpacity>
                                         </View>
                                     </View>
                                 </View>);
                             })}
                         </ViewPager>
                         <View style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', marginTop: 20}}>
+                            {this.state.audio ? <Text></Text> :
                             <TouchableOpacity onPress={() => {this.enableDisableSound()}}>
                                 <Image source={this.state.mute ? require('../assets/images/Mute.png') : require('../assets/images/More-Volume.png')}
                                        style={{ height: 19, width: 29 }} />
-                            </TouchableOpacity>
+                            </TouchableOpacity>}
                             <Rating
                                 type='custom'
                                 ratingImage={RATE_IMAGE}

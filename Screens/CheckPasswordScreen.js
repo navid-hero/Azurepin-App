@@ -71,6 +71,9 @@ export default class CheckPasswordScreen extends React.Component {
                                 <ActivityIndicator size="small" color={Colors.primary}/> :
                             <Text style={styles.submitButtonText}>Done</Text>}
                         </TouchableOpacity>
+                        {this.state.sendRequest && <View style={{justifyContent: 'center', alignItems: 'center'}}>
+                            <Text style={{color: Colors.text}}>Please wait ...</Text>
+                        </View>}
                     </View>
                 </View>
             </View>
@@ -106,7 +109,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#EFEFEF',
         borderRadius:50,
         width: 100,
-        margin: 40
+        margin: 40,
+        marginBottom: 10,
     },
     submitButtonText: {
         color: '#007BFE',

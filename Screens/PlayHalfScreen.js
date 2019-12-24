@@ -1,5 +1,7 @@
 import React from 'react';
 import {
+    Alert,
+    AsyncStorage,
     StyleSheet,
     Image,
     View,
@@ -8,11 +10,19 @@ import {
     Text,
     TextInput,
     PermissionsAndroid,
-    Share
+    Share, ActivityIndicator
 } from "react-native";
 import MapboxGL from "@mapbox/react-native-mapbox-gl";
 import Geolocation from 'react-native-geolocation-service';
+import Api from '../Components/Api';
+import NetInfo from "@react-native-community/netinfo";
+import ViewPager from '@react-native-community/viewpager';
+import RNFetchBlob from "rn-fetch-blob";
+import * as ToastAndroid from "react-native";
+import Video from "react-native-video";
+import {Colors} from "../Components/Colors";
 
+const api = new Api();
 const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 MapboxGL.setAccessToken(accessToken);
 
@@ -22,18 +32,35 @@ export default class PlayHalfScreen extends React.Component {
 
         this.state = {
             mapCenter: {lng: 175.2908138, lat: -37.7906929},
+            nw: {lng: "", lat: ""},
+            se: {lng: "", lat: ""},
             mapZoomLevel: 13,
-            coordinates: [
-                {id: "1", lng: 175.2908138, lat: -37.7906929},
-                {id: "2", lng: 175.28, lat: -37.78},
-                {id: "3", lng: 175.28, lat: -37.8},
-                {id: "4", lng: 175.3, lat: -37.8}
-            ],
+            coordinates: [],
             search: false,
             searchQuery: "",
             searchResult: [],
+            orderId: 0,
             rated: false,
             fullScreen: false,
+            pinId: "",
+            mute: true,
+            initialRateValue: 3,
+            video: "",
+            audio: "",
+            uri: "",
+            title: "",
+            date: "",
+            time: "",
+            location: "",
+            lat: "",
+            lng: "",
+            playBack: false,
+            currentPositionSec: "",
+            currentDurationSec: "",
+            playTime: "",
+            duration: "",
+            hasLiked: false,
+            videoLoading: false
         };
 
         this.finishRenderMap = this.finishRenderMap.bind(this);
@@ -46,6 +73,14 @@ export default class PlayHalfScreen extends React.Component {
 
     componentDidMount() {
         MapboxGL.setTelemetryEnabled(false);
+
+        NetInfo.fetch().then(state => {
+            if (!state.isConnected)
+                Alert.alert("Connection Error!", "You are not connected to the internet, application may not work correctly.");
+
+            if (!this.requestLocationPermission())
+                Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
+        });
     }
 
     async requestLocationPermission() {
@@ -82,6 +117,87 @@ export default class PlayHalfScreen extends React.Component {
                 },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
             );
+        }
+    }
+
+    getPins() {
+        this.getCorners().then((corners) => {
+            let nw = {lng: corners[1][0], lat: corners[0][1]};
+            let se = {lng: corners[0][0], lat: corners[1][1]};
+            let orderId = this.state.orderId+1;
+            this.setState({nw, se, orderId}, () => {
+                AsyncStorage.getItem('userId', (err, userId) => {
+                    api.postRequest("Pin/GetPins", JSON.stringify([
+                        {key: "UserId", value: userId},
+                        {key: "Lat1", value: nw.lat.toString()},
+                        {key: "Lat2", value: se.lat.toString()},
+                        {key: "Lon1", value: nw.lng.toString()},
+                        {key: "Lon2", value: se.lng.toString()},
+                        {key: "Count", value: "20"},
+                        {key: "OrderId", value: orderId.toString()}
+                    ]))
+                        .then((response) => {
+                            console.log("pins", response);
+                            if (response && response.result === "success" && response.orderId === orderId.toString()) {
+                                if (response.pins && response.pins.length > 0) {
+                                    let pins = response.pins;
+                                    let coordinates = [];
+                                    for (let i = 0; i < pins.length; i++)
+                                        coordinates.push({
+                                            id: pins[i].pinId.toString(),
+                                            lng: parseFloat(pins[i].longitude),
+                                            lat: parseFloat(pins[i].latitude),
+                                            title: pins[i].title
+                                        });
+
+                                    this.setState({coordinates}, () => {
+                                        this.forceUpdate();
+                                        this.onPageSelected(0);
+                                    });
+                                }
+                                else
+                                    Alert.alert('Woops!', 'Looks something went wrong!');
+                            } else {
+                                this.setState({coordinates: []}, () => {
+                                    this.forceUpdate();
+                                });
+                            }
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
+                });
+            });
+        });
+
+    }
+
+    gotoCurrentLocation = () => {
+        Geolocation.getCurrentPosition(
+            (position) => {
+                this.setState({
+                    mapCenter: {
+                        lng: position.coords.longitude,
+                        lat: position.coords.latitude
+                    }
+                });
+
+                this.getPins();
+            },
+            (error) => {
+                if (error.code === 5) // Location settings are not satisfied.
+                    Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        );
+
+    };
+
+    async getCorners() {
+        if (this._map !== null) {
+            return await this._map.getVisibleBounds();
+        } else {
+            console.log("this._map is null");
         }
     }
 
@@ -146,70 +262,216 @@ export default class PlayHalfScreen extends React.Component {
             alert(error.message);
         }
     };
+    onPageSelected = (e) => {
+        let index = e === 0 ? e : e.nativeEvent.position;
+
+        console.log("index", this.state.coordinates[index]);
+
+        this.setState({
+            playback: false,
+            pinId: "",
+            rated: false,
+            initialRateValue: 3,
+            title: "",
+            lng: "",
+            lat: "",
+            date: "",
+            time: "",
+            location: "",
+            uri: "",
+            video: "",
+            audio: ""
+        }, () => {
+            if (!this.state.coordinates[index].downloaded) {
+                AsyncStorage.getItem('userId', (err, userId) => {
+                    const { coordinates } = this.state;
+                    if (coordinates && coordinates.length > 0) {
+                        api.postRequest("Pin/GetPin", JSON.stringify([
+                            {key: "UserId", value: userId},
+                            {key: "PinId", value: coordinates[index].id},
+                        ]))
+                            .then((responseJson) => {
+                                console.log(responseJson);
+                                if (responseJson && responseJson.result === "success") {
+                                    let dateTime = new Date(parseInt(responseJson.timestamp));
+                                    let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                    let year = dateTime.getFullYear();
+                                    let month = months[dateTime.getMonth()];
+                                    let date = dateTime.getDate();
+                                    let hour = dateTime.getHours();
+                                    let minute = dateTime.getMinutes();
+                                    let location = responseJson.location;
+                                    let url = "http://185.173.106.155/"+responseJson.url.replace("~/", "").replace(/ /g, "%20");
+                                    let video = null, audio = responseJson.type === 1 ? url : null;
+
+
+                                    // set date time location
+                                    this.setState({
+                                        title: "("+(index+1)+") "+coordinates[index].title,
+                                        date: month + " " + date + " " + year + " / ",
+                                        time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
+                                        location: location,
+                                        audio: audio,
+                                        video: video
+                                    }, () => {
+                                        coordinates[index].details = {
+                                            pinId: coordinates[index].id,
+                                            rated: responseJson.hasLiked,
+                                            initialRateValue: (responseJson.likes / 20),
+                                            title: "("+(index+1)+") "+coordinates[index].title,
+                                            lng: coordinates[index].lng,
+                                            lat: coordinates[index].lat,
+                                            date: month + " " + date + " " + year + " / ",
+                                            time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
+                                            location: location,
+                                            uri: url,
+                                            audio: audio,
+                                            video: null
+                                        };
+                                    });
+
+                                    if (responseJson.type === 2) {
+                                        if (!coordinates[index].fileDownloaded) {
+                                            this.setState({videoLoading: true}, () => {
+                                                console.log("downloading...");
+                                                RNFetchBlob
+                                                    .config({
+                                                        fileCache: true,
+                                                        appendExt: 'mp4'
+                                                    })
+                                                    .fetch('GET', url)
+                                                    .then((res) => {
+                                                        this.setState({videoLoading: false}, () => {
+                                                            console.log('The file saved to ', res.path());
+                                                            coordinates[index].fileDownloaded = true;
+                                                            video = Platform.OS === 'android' ? ('file://' + res.path()) : res.path();
+                                                            this.setState({video: video}, () => {
+                                                                coordinates[index].details.audio = "";
+                                                                coordinates[index].details.video = video;
+                                                                coordinates[index].fileDownloaded = true;
+                                                            });
+                                                        });
+                                                    });
+                                            });
+                                        }
+                                    }
+
+                                    coordinates[index].downloaded = true;
+
+                                    this.setState(this.state.coordinates[index].details, () => {
+                                        this.forceUpdate();
+                                    });
+                                }
+                            });
+                    }
+                });
+            } else {
+                this.setState(this.state.coordinates[index].details);
+            }
+        });
+    };
+
+    ratingCompleted(rating) {
+        console.log("rating", rating);
+        AsyncStorage.getItem('userId', (err, userId) => {
+            api.postRequest("Pin/LikePin", JSON.stringify([
+                {key: "UserId", value: userId},
+                {key: "PinId", value: this.state.pinId},
+                {key: "LikeType", value: rating.toString()}
+            ])).then((response) => {
+                if (response && response.result === "success") {
+                    ToastAndroid.show('rated successfully', ToastAndroid.SHORT);
+                    this.setState({rated: true});
+                }
+            })
+        });
+    }
 
     render() {
         return (
             <View style={{flex: 1}}>
-                {!this.state.fullScreen ?
-                    <View>
-                        <View style={{flexDirection: 'row', margin: 15}}>
-                            <View style={{flex: 1}}>
-                                <Image source={require('../assets/images/Video-small.png')}
-                                       style={{width: 150, height: 150}}/>
-                            </View>
-                            <View style={{flex: 1}}>
-                                <Text style={styles.titleText} numberOfLines={1}>Gretta is here in New York</Text>
-                                <Text style={styles.subtitleText}>FEBRUARY 22, 2019 / 8:16 AM / New York, US</Text>
-                                <TouchableOpacity onPress={() => {
-                                    this.rate();
-                                }}>
-                                    <Image
-                                        source={this.state.rated ? require('../assets/images/Rated.png') : require('../assets/images/Rate.png')}
-                                        style={{width: 95, height: 11, alignSelf: 'center', margin: 18}}/>
-                                </TouchableOpacity>
+                {this.state.fullScreen ? <Text></Text> :
+                this.state.coordinates && this.state.coordinates.length > 0 ?
+                    <ViewPager initialPage={0} style={{flex: 1}}
+                               onPageSelected={(e) => this.onPageSelected(e)}>
+                        {this.state.coordinates.map((item, key) => {
+                            return (
+                                <View key={key}>
+                                    <View style={{flexDirection: 'row', margin: 15}}>
+                                        <View style={{flex: 1}}>
+                                            {this.state.videoLoading ?
+                                                <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                                                    <ActivityIndicator size="large" color={Colors.primary}/>
+                                                </View> :
+                                                (this.state.video ?
+                                            <View style={{width: 150, height: 150}}>
+                                                <Video source={{uri: this.state.video}}
+                                                       ref={(ref) => {this.player = ref }}
+                                                       resizeMode="cover"
+                                                       paused={false}
+                                                       repeat={true}
+                                                       style={{width: '100%', height: '100%'}}
+                                                />
+                                            </View> :
+                                            <Image source={require('../assets/images/Audio.png')}
+                                                   style={{width: 150, height: 150}}/>)}
+                                        </View>
+                                        <View style={{flex: 1}}>
+                                            <Text style={styles.titleText} numberOfLines={1}>{this.state.title}</Text>
+                                            <Text style={styles.subtitleText}>{this.state.date} {this.state.time} {this.state.location}</Text>
+                                            <TouchableOpacity onPress={(rating) => this.ratingCompleted(rating)}>
+                                                <Image
+                                                    source={this.state.rated ? require('../assets/images/Rated.png') : require('../assets/images/Rate.png')}
+                                                    style={{width: 95, height: 11, alignSelf: 'center', margin: 18}}/>
+                                            </TouchableOpacity>
 
-                                <View style={{
-                                    flexDirection: 'row',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    margin: 5
-                                }}>
-                                    <TouchableOpacity onPress={() => {
-                                        this.onShare();
-                                    }}>
-                                        <Image source={require('../assets/images/Share.png')}
-                                               style={{width: 13, height: 18}}/>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => {this.goFullScreen();}}>
-                                        <Image source={require('../assets/images/Cancel.png')}
-                                               style={{width: 12, height: 12}}/>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        </View>
+                                            <View style={{
+                                                flexDirection: 'row',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                margin: 5
+                                            }}>
+                                                <TouchableOpacity onPress={() => {
+                                                    this.onShare();
+                                                }}>
+                                                    <Image source={require('../assets/images/Share.png')}
+                                                           style={{width: 13, height: 18}}/>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity onPress={() => {this.goFullScreen();}}>
+                                                    <Image source={require('../assets/images/Cancel.png')}
+                                                           style={{width: 12, height: 12}}/>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    </View>
 
-                        <View style={{marginBottom: 5}}>
-                            <TouchableOpacity onPress={() => {this.props.navigation.goBack();}}
-                                              style={{alignSelf: 'center'}} >
-                                <Image source={require('../assets/images/Rectangle-64.png')}
-                                       style={{width: 145, height: 10, borderRadius: 10}}/>
-                            </TouchableOpacity>
-                        </View>
-                    </View> : <View></View>
+                                    <View style={{marginBottom: 5}}>
+                                        <TouchableOpacity onPress={() => {this.props.navigation.goBack();}}
+                                                          style={{alignSelf: 'center'}} >
+                                            <Image source={require('../assets/images/Rectangle-64.png')}
+                                                   style={{width: 145, height: 10, borderRadius: 10}}/>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>)})}
+                        </ViewPager> :
+
+                    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}><Text>No items in playlist</Text></View>
                 }
-                <View style={{flex:1}}>
+                <View style={{flex:2}}>
                     <View style={styles.page}>
                         <View style={styles.container}>
                             <MapboxGL.MapView
+                                ref={c => (this._map = c)}
                                 style={styles.map}
                                 logoEnabled={false}
                                 zoomLevel={this.state.mapZoomLevel}
                                 centerCoordinate={[this.state.mapCenter.lng, this.state.mapCenter.lat]}
                                 showUserLocation={true}
                                 onDidFinishRenderingMapFully={this.finishRenderMap}
+                                onRegionDidChange={() => this.getPins()}
                             >
                                 {this.state.coordinates.map((item, key) => {
-                                    return <MapboxGL.PointAnnotation id={item.id} coordinate={[item.lng, item.lat]} />;
+                                    return <MapboxGL.PointAnnotation key={key} id={item.id} coordinate={[item.lng, item.lat]} />;
                                 })}
                             </MapboxGL.MapView>
 
@@ -221,8 +483,10 @@ export default class PlayHalfScreen extends React.Component {
 
                             {this.state.search ?
                                 <View style={styles.searchOpenIcon}>
-                                    <Image source={require('../assets/images/Searchbar-close.png')}
-                                           style={[styles.image, {width: 57, height: 57}]}/>
+                                    <TouchableOpacity  onPress={() => {this.setState({search: false, searchResult: []})}}>
+                                        <Image source={require('../assets/images/Searchbar-close.png')}
+                                               style={[styles.image, {width: 57, height: 57}]}/>
+                                    </TouchableOpacity>
                                     <TextInput
                                         style={[styles.textInput, {position: this.state.search ? 'absolute' : 'relative'}]}
                                         placeholder="New Search"
@@ -230,13 +494,13 @@ export default class PlayHalfScreen extends React.Component {
                                         value={this.state.searchQuery}
                                     />
                                     <Image source={require('../assets/images/Blue-Location.png')}
-                                           style={{width: 20, height: 19, marginRight: 10}}/>
+                                           style={{width: 20, height: 19, marginRight: 20}}/>
                                 </View> : <View></View>
                             }
                             {this.state.searchResult ?
                                 <ScrollView style={[styles.placesContainer, {display: this.state.searchResult.length > 0 ? 'flex' : 'none', position: this.state.searchResult.length > 0 ? 'absolute' : 'relative'}]}>
                                     {this.state.searchResult.map((item, key) => {
-                                        return  <TouchableOpacity style={styles.searchResultItem}
+                                        return  <TouchableOpacity key={key} style={styles.searchResultItem}
                                                                   onPress={() => this.setCenterToResultItem(item.center[0], item.center[1])} >
                                             <Text style={styles.searchResultItemText}>{item.place_name}</Text>
                                         </TouchableOpacity>;
@@ -245,12 +509,13 @@ export default class PlayHalfScreen extends React.Component {
                             }
 
                             <TouchableOpacity style={[styles.icon, styles.playIcon]}
-                                              onPress={() => this.props.navigation.navigate('Play')}>
+                                              onPress={() => this.props.navigation.navigate('Play', {coordinates: JSON.stringify(this.state.coordinates)})}>
                                 <Image source={require('../assets/images/Play.png')}
                                        style={styles.image} />
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={[styles.icon, styles.pinIcon]}>
+                            <TouchableOpacity style={[styles.icon, styles.pinIcon]}
+                                              onPress={() => this.props.navigation.navigate('DropPin')}>
                                 <Image source={require('../assets/images/Pin_+.png')}
                                        style={styles.image} />
                             </TouchableOpacity>
@@ -340,10 +605,11 @@ const styles = {
     placesContainer: {
         left: 35,
         right: 35,
-        top: 110,
+        top: 112,
         height: 120,
         backgroundColor: '#DCDCDC',
-        color: '#707070'
+        color: '#707070',
+        borderRadius: 20
     },
     searchResultItem: {
         margin: 10,
@@ -353,6 +619,7 @@ const styles = {
         borderBottomColor: '#c7c7c7'
     },
     searchResultItemText: {
-        color: '#707070'
+        color: '#707070',
+        paddingTop: 5
     }
 };

@@ -1,8 +1,10 @@
 import React from 'react';
-import {AsyncStorage, Image, Modal, ScrollView, StyleSheet, ToastAndroid, Text, TouchableOpacity, View} from "react-native";
+import {ActivityIndicator, AsyncStorage, Image, Modal, ScrollView, StyleSheet, ToastAndroid, Text, TouchableOpacity, View} from "react-native";
 import {Colors} from "../Components/Colors";
 import Api from '../Components/Api';
 import { Rating } from 'react-native-elements';
+import { WebView } from 'react-native-webview';
+
 const api = new Api();
 const RATE_IMAGE = require('../assets/images/rate-icon.png');
 
@@ -28,7 +30,9 @@ export default class SettingScreen extends React.Component {
                 {title: 'Terms and Conditions', url: "http://azurepins.com/terms.php"},
                 {title: 'About', url: "http://azurepins.com/about.php"}],
             webModal: false,
-            webModalName: ""
+            webModalName: "",
+            webModalUrl: "",
+            webViewLoading: true
         };
     }
 
@@ -89,15 +93,6 @@ export default class SettingScreen extends React.Component {
         let content = (
             <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', margin: 10, padding: 10}}>
                 <Text style={{color: Colors.text}}>Nothing in here!</Text>
-                <Rating
-                    type='custom'
-                    ratingImage={RATE_IMAGE}
-                    ratingColor={Colors.primary}
-                    ratingBackgroundColor={Colors.lightBackground}
-                    imageSize={10}
-                    startingValue={2}
-                    readonly={true}
-                />
             </View>
         );
         if (this.state.active === 'notification') {
@@ -176,7 +171,7 @@ export default class SettingScreen extends React.Component {
                                     <Image source={require('../assets/images/Path-40.png')}
                                            style={{width: 6, height: 12, margin: 10}}/>
                                     <TouchableOpacity onPress={() => {
-                                        this.setState({webModal: true, webModalName: item.title})
+                                        this.setState({webModal: true, webModalName: item.title, webModalUrl: item.url})
                                     }}>
                                         <Text style={{color: '#666666'}}>{item.title}</Text>
                                     </TouchableOpacity>
@@ -209,15 +204,20 @@ export default class SettingScreen extends React.Component {
                     transparent={false}
                     visible={this.state.webModal}
                 >
-                    <ScrollView style={{flex: 1}}>
+                    <View style={{flex: 1}}>
                         <View style={{borderBottomWidth: 1, borderBottomColor: Colors.border, margin: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
                             <Text>{this.state.webModalName}</Text>
-                            <TouchableOpacity style={{padding: 10}} onPress={() => {this.setState({webModal: false})}}>
+                            <TouchableOpacity style={{padding: 10}} onPress={() => {this.setState({webModal: false, webViewLoading: true})}}>
                                 <Image source={require('../assets/images/Cancel.png')} style={{width: 12, height: 12}} />
                             </TouchableOpacity>
                         </View>
-                        {/*<WebView source={{uri: 'http://azurepins.com/terms.php'}} style={{marginTop: 5}} />*/}
-                    </ScrollView>
+                        {this.state.webViewLoading &&
+                        <View style={{justifyContent: 'center', alignItems: 'center'}}>
+                            <ActivityIndicator size="large" color={Colors.primary}/>
+                            <Text style={{color: Colors.text}}>Please wait ...</Text>
+                        </View>}
+                        <WebView source={{uri: this.state.webModalUrl}} onLoadEnd={() => this.setState({webViewLoading: false})}/>
+                    </View>
                 </Modal>
                 <View style={{flexDirection:'row', borderBottomColor: '#E3E3E3', borderBottomWidth: 1, padding: 15, margin: 10}}>
                     <View style={{flex:2, alignItems: 'flex-end'}}>
