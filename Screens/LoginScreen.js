@@ -52,7 +52,7 @@ export default class LoginScreen extends React.Component {
                         AsyncStorage.setItem('userId', response.userId.toString());
                         this.props.navigation.dispatch(resetAction);
                     } else {
-                        Alert.alert('Woops!', 'Looks something went wrong!');
+                        Alert.alert('Woops!', 'Looks something went wrong! Please try again.');
                     }
                 })
                 .catch((error) => {

@@ -1,4 +1,4 @@
-const baseUrl = "http://185.173.106.155/";
+const baseUrl = "http://192.99.246.61/";
 
 export default class Api {
 

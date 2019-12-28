@@ -6,6 +6,7 @@ import {
     Image,
     Modal,
     PermissionsAndroid,
+    Platform,
     Text,
     TextInput,
     StyleSheet,
@@ -23,6 +24,7 @@ import Api from '../Components/Api';
 import {AudioRecorder, AudioUtils} from "react-native-audio";
 import Sound from 'react-native-sound';
 import NetInfo from "@react-native-community/netinfo";
+import Torch from 'react-native-torch';
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
@@ -38,7 +40,7 @@ export default class DropPinScreen extends React.Component {
             latitude: "",
             longitude: "",
             location: "Location",
-            flashMode: 'on', // RNCamera.Constants.FlashMode.off,
+            flashMode: true, // RNCamera.Constants.FlashMode.off,
             video:true,
             audio:false,
             type: RNCamera.Constants.Type.back,
@@ -174,13 +176,26 @@ export default class DropPinScreen extends React.Component {
         });
     };
 
-    toggleTorch = () => {
-        this.setState({
-            flashMode:
-                this.state.flashMode === RNCamera.Constants.FlashMode.off
-                    ? RNCamera.Constants.FlashMode.on
-                    : RNCamera.Constants.FlashMode.off
-        });
+    toggleTorch = async () => {
+        if (Platform.OS === "android") {
+            const cameraAllowed = await Torch.requestCameraPermission(
+                'Camera Permissions', // dialog title
+                'We require camera permissions to use the torch on the back of your phone.' // dialog body
+            ).then(() => Torch.switchState(this.state.flashMode));
+/*
+            if (cameraAllowed) {
+                try {
+                    this.setState({flashMode: !this.state.flashMode}, () => {
+                        Torch.switchState(this.state.flashMode);
+                    });
+                } catch (e) {
+                    ToastAndroid.show(
+                        'We seem to have an issue accessing your torch',
+                        ToastAndroid.SHORT
+                    );
+                }
+            }*/
+        }
     };
 
     animate() {
@@ -608,7 +623,7 @@ export default class DropPinScreen extends React.Component {
     }
 
     render() {
-        const { type, flashMode } = this.state;
+        const { type } = this.state;
         return (
             <View style={{flex:1}}>
                 <Modal
@@ -719,7 +734,7 @@ export default class DropPinScreen extends React.Component {
                                     <RNCamera ref={cam => {this.camera = cam;}}
                                               style={{flex: 1}}
                                               type={type}
-                                              flashMode={flashMode}
+                                              flashMode="on"
                                               defaultVideoQuality={RNCamera.Constants.VideoQuality['480p']}
                                               androidCameraPermissionOptions={{
                                                   title: 'Permission to use camera',
