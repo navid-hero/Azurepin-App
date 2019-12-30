@@ -1,4 +1,5 @@
-const baseUrl = "http://192.99.246.61/";
+import { Constants } from "./Constants";
+const baseUrl = Constants.baseUrl;
 
 export default class Api {
 

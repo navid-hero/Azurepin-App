@@ -30,9 +30,10 @@ export default class CheckPasswordScreen extends React.Component {
                 api.postRequest("User/SubmitSignupKey", JSON.stringify([{key: "UserId", value: value}, {key: "Key", value: this.state.code}]))
                     .then((response) => {
                         this.setState({sendRequest: false});
-                        if (response && response.result === "success")
+                        if (response && response.result === "success") {
+                            AsyncStorage.setItem('logged_in', "true");
                             this.props.navigation.dispatch(resetAction);
-                        else {
+                        } else {
                             Alert.alert('Woops!', 'Looks something went wrong!');
                         }
                     })

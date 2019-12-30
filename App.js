@@ -1,5 +1,5 @@
 import React from 'react';
-import { createAppContainer } from 'react-navigation';
+import {createAppContainer, NavigationActions, StackActions} from 'react-navigation';
 import { createStackNavigator } from 'react-navigation-stack';
 import SplashScreen from "./Screens/SplashScreen";
 import LoginScreen from "./Screens/LoginScreen";
@@ -22,8 +22,6 @@ const MainNavigator = createStackNavigator({
     PlayHalf: {screen: PlayHalfScreen, navigationOptions: ({navigation}) => ({header: null})},
     Detail: {screen: DetailScreen, navigationOptions: ({navigation}) => ({header: null})},
     Setting: {screen: SettingScreen, navigationOptions: ({navigation}) => ({header: null})},
-});
+}, { initialRouteName: "Home" });
 
 export default createAppContainer(MainNavigator);
-
-

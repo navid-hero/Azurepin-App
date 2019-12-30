@@ -20,18 +20,24 @@ import ViewPager from '@react-native-community/viewpager';
 import RNFetchBlob from "rn-fetch-blob";
 import * as ToastAndroid from "react-native";
 import Video from "react-native-video";
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import {Colors} from "../Components/Colors";
+import {Constants} from "../Components/Constants";
 
 const api = new Api();
 const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 MapboxGL.setAccessToken(accessToken);
 
+const audioRecorderPlayer = new AudioRecorderPlayer();
+
 export default class PlayHalfScreen extends React.Component {
     constructor(props) {
         super(props);
 
+        const mapCenter = JSON.parse(this.props.navigation.getParam('mapCenter'));
+
         this.state = {
-            mapCenter: {lng: 175.2908138, lat: -37.7906929},
+            mapCenter: mapCenter,
             nw: {lng: "", lat: ""},
             se: {lng: "", lat: ""},
             mapZoomLevel: 13,
@@ -102,22 +108,8 @@ export default class PlayHalfScreen extends React.Component {
     }
 
     finishRenderMap() {
-        if (this.requestLocationPermission()) {
-            Geolocation.getCurrentPosition(
-                (position) => {
-                    this.setState({
-                        mapCenter: {
-                            lng: position.coords.longitude,
-                            lat: position.coords.latitude
-                        }
-                    });
-                },
-                (error) => {
-                    console.log(error.code, error.message);
-                },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-            );
-        }
+        let mapCenter = JSON.parse(this.props.navigation.getParam('mapCenter'));
+        this.setState({mapCenter});
     }
 
     getPins() {
@@ -301,7 +293,7 @@ export default class PlayHalfScreen extends React.Component {
                                     let hour = dateTime.getHours();
                                     let minute = dateTime.getMinutes();
                                     let location = responseJson.location;
-                                    let url = "http://185.173.106.155/"+responseJson.url.replace("~/", "").replace(/ /g, "%20");
+                                    let url = Constants.baseUrl+responseJson.url.replace("~/", "").replace(/ /g, "%20");
                                     let video = null, audio = responseJson.type === 1 ? url : null;
 
 
@@ -354,6 +346,8 @@ export default class PlayHalfScreen extends React.Component {
                                                     });
                                             });
                                         }
+                                    } else if (responseJson.type === 1) {
+                                        this._playAudio();
                                     }
 
                                     coordinates[index].downloaded = true;
@@ -366,10 +360,31 @@ export default class PlayHalfScreen extends React.Component {
                     }
                 });
             } else {
-                this.setState(this.state.coordinates[index].details);
+                this.setState(this.state.coordinates[index].details, () => {
+                    if (this.state.coordinates[index].details.audio) {
+                        this._playAudio();
+                    }
+                });
             }
         });
     };
+
+    async _playAudio() {
+        await audioRecorderPlayer.startPlayer(this.state.audio).then(() => this.setState({playBack: true}));
+        audioRecorderPlayer.addPlayBackListener((e) => {
+            if (e.current_position === e.duration) {
+                audioRecorderPlayer.stopPlayer().then(() => this.setState({playBack: false}));
+                audioRecorderPlayer.removePlayBackListener();
+                this.setState({playBack: false});
+            }
+            this.setState({
+                currentPositionSec: e.current_position,
+                currentDurationSec: e.duration,
+                playTime: audioRecorderPlayer.mmssss(Math.floor(e.current_position)),
+                duration: audioRecorderPlayer.mmssss(Math.floor(e.duration)),
+            });
+        });
+    }
 
     ratingCompleted(rating) {
         console.log("rating", rating);
@@ -493,8 +508,10 @@ export default class PlayHalfScreen extends React.Component {
                                         onChangeText={text => this.searchPlaces(text)}
                                         value={this.state.searchQuery}
                                     />
-                                    <Image source={require('../assets/images/Blue-Location.png')}
-                                           style={{width: 20, height: 19, marginRight: 20}}/>
+                                    <TouchableOpacity onPress={() => {this.gotoCurrentLocation();}}>
+                                        <Image source={require('../assets/images/Blue-Location.png')}
+                                               style={{width: 20, height: 19, marginRight: 20}}/>
+                                    </TouchableOpacity>
                                 </View> : <View></View>
                             }
                             {this.state.searchResult ?

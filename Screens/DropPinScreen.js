@@ -176,13 +176,15 @@ export default class DropPinScreen extends React.Component {
         });
     };
 
-    toggleTorch = async () => {
+    toggleTorch = () => {
+/*
         if (Platform.OS === "android") {
-            const cameraAllowed = await Torch.requestCameraPermission(
+            const cameraAllowed = await
+            Torch.requestCameraPermission(
                 'Camera Permissions', // dialog title
                 'We require camera permissions to use the torch on the back of your phone.' // dialog body
-            ).then(() => Torch.switchState(this.state.flashMode));
-/*
+            );
+
             if (cameraAllowed) {
                 try {
                     this.setState({flashMode: !this.state.flashMode}, () => {
@@ -194,8 +196,9 @@ export default class DropPinScreen extends React.Component {
                         ToastAndroid.SHORT
                     );
                 }
-            }*/
+            }
         }
+*/
     };
 
     animate() {
@@ -672,7 +675,7 @@ export default class DropPinScreen extends React.Component {
                         <Image source={require('../assets/images/Logo_Text.png')}
                                style={{width: 129, height: 32}} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => {this.onExit();}} style={{marginRight: 10, marginTop: 10}}>
+                    <TouchableOpacity onPress={() => {this.onExit();}} style={{padding: 10}}>
                         <Image source={require('../assets/images/Cancel.png')}
                                style={{width: 12, height: 12}} />
                     </TouchableOpacity>

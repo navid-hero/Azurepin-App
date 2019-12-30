@@ -11,16 +11,18 @@ export default class splashScreen extends React.Component {
     componentDidMount() {
         // const {navigate} = this.props.navigation;
         AsyncStorage.getItem('userId', (err, userId) => {
-            setTimeout(() => {
-                let nextScreen = userId > 0 ? "Home" : "Login";
+            AsyncStorage.getItem('logged_in', (err, loggedIn) => {
+                setTimeout(() => {
+                    let nextScreen = (userId > 0 && loggedIn) ? "Home" : "Login";
 
-                const resetAction = StackActions.reset({
-                    index: 0,
-                    actions: [NavigationActions.navigate({ routeName: nextScreen })],
-                });
+                    const resetAction = StackActions.reset({
+                        index: 0,
+                        actions: [NavigationActions.navigate({ routeName: nextScreen })],
+                    });
 
-                this.props.navigation.dispatch(resetAction)
-            }, 2000);
+                    this.props.navigation.dispatch(resetAction)
+                }, 2000);
+            });
         });
     }
 

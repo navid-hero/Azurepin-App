@@ -4,6 +4,7 @@ import {Colors} from "../Components/Colors";
 import Api from '../Components/Api';
 import { Rating } from 'react-native-elements';
 import { WebView } from 'react-native-webview';
+import {NavigationActions, StackActions} from "react-navigation";
 
 const api = new Api();
 const RATE_IMAGE = require('../assets/images/rate-icon.png');
@@ -87,6 +88,16 @@ export default class SettingScreen extends React.Component {
 
     changeActiveTab(tab) {
         this.setState({active: tab});
+    }
+
+    logout() {
+        AsyncStorage.removeItem('userId');
+        AsyncStorage.removeItem('logged_in');
+        const resetAction = StackActions.reset({
+            index: 0,
+            actions: [NavigationActions.navigate({ routeName: 'Login' })],
+        });
+        this.props.navigation.dispatch(resetAction);
     }
 
     render() {
@@ -180,17 +191,15 @@ export default class SettingScreen extends React.Component {
                         })}
                     </View>
 
-                    <TouchableOpacity style={{
+                    <TouchableOpacity
+                        style={{
                         justifyContent: 'center',
                         alignItems: 'center',
                         margin: 10,
                         borderTopWidth: 1,
                         borderTopColor: Colors.border
                     }}
-                                      onPress={() => {
-                                          AsyncStorage.removeItem('userId');
-                                          this.props.navigation.navigate('Login');
-                                      }}>
+                        onPress={() => {this.logout();}}>
                         <Text style={{color: Colors.danger, padding: 10}}>Log out of Azurepin</Text>
                     </TouchableOpacity>
                 </View>

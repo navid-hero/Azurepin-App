@@ -7,8 +7,10 @@ import Video from 'react-native-video';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import ViewPager from '@react-native-community/viewpager';
 import { Rating } from 'react-native-elements';
-import {Colors} from "../Components/Colors";
+import { Colors } from "../Components/Colors";
+import { Constants } from "../Components/Constants";
 import RNFetchBlob from 'rn-fetch-blob'
+import ProgressBar from "react-native-progress/Bar";
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
@@ -42,7 +44,10 @@ class PlayScreen extends React.Component {
             optionArray: ['Report', 'Bookmark', 'Copy Link', 'Save', 'Cancel'],
             cancelButtonIndex: 4,
             destructiveButtonIndex: 0,
-            videoLoading: false
+            videoLoading: false,
+            start: "",
+            end: "",
+            currentTime: ""
         };
     }
     componentDidMount() {
@@ -241,7 +246,7 @@ class PlayScreen extends React.Component {
                                     let hour = dateTime.getHours();
                                     let minute = dateTime.getMinutes();
                                     let location = responseJson.location;
-                                    let url = "http://185.173.106.155/"+responseJson.url.replace("~/", "").replace(/ /g, "%20");
+                                    let url = Constants.baseUrl+responseJson.url.replace("~/", "").replace(/ /g, "%20");
                                     let video = null, audio = responseJson.type === 1 ? url : null;
 
 
@@ -251,6 +256,7 @@ class PlayScreen extends React.Component {
                                         date: month + " " + date + " " + year + " / ",
                                         time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
                                         location: location,
+                                        duration: responseJson.duration,
                                         audio: audio,
                                         video: video
                                     }, () => {
@@ -360,7 +366,7 @@ class PlayScreen extends React.Component {
                         />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={{margin:10}}
+                    <TouchableOpacity style={{padding:10}}
                                       onPress={() => {this.props.navigation.pop();}}>
                         <Image
                             source={require('../assets/images/Cancel.png')}
@@ -375,7 +381,7 @@ class PlayScreen extends React.Component {
                                    onPageSelected={(e) => this.onPageSelected(e)}>
                             {this.state.coordinates.map((item, key) => {
                                 return (<View key={key}>
-                                    <View style={{flex:1, flexDirection: 'row', width: '100%'}}>
+                                    <View style={{flex:1, flexDirection: 'row', paddingHorizontal: 10}}>
                                         <View style={{flex: 6}}>
                                             <Text style={styles.titleText}>{this.state.title}</Text>
                                             <Text style={styles.subtitleText}>{this.state.date}{this.state.time}{this.state.location}</Text>
@@ -457,7 +463,7 @@ class PlayScreen extends React.Component {
                 </View>}
                 <View style={{alignItems: 'center'}}>
                     <TouchableOpacity style={{position: 'absolute', bottom: 5}}
-                                      onPress={() => this.props.navigation.navigate('PlayHalf')}>
+                                      onPress={() => this.props.navigation.navigate('PlayHalf', {mapCenter: this.props.navigation.getParam('mapCenter')})}>
                         <Image source={require('../assets/images/Rectangle-64.png')}
                                style={{ height: 10, width: 150, borderRadius: 5 }} />
                     </TouchableOpacity>

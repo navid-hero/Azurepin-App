@@ -15,6 +15,7 @@ import {PermissionsAndroid} from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import NetInfo from "@react-native-community/netinfo";
 import Api from '../Components/Api';
+import {NavigationActions, StackActions} from "react-navigation";
 
 const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 MapboxGL.setAccessToken(accessToken);
@@ -25,6 +26,18 @@ export default class HomeScreen extends React.Component {
 
     constructor(props) {
         super(props);
+
+        AsyncStorage.getItem('userId', (err, userId) => {
+            AsyncStorage.getItem('logged_in', (err, loggedIn) => {
+                if ((!(userId > 0)) || loggedIn !== "true") {
+                    const resetAction = StackActions.reset({
+                        index: 0,
+                        actions: [NavigationActions.navigate({ routeName: 'Splash' })],
+                    });
+                    this.props.navigation.dispatch(resetAction);
+                }
+            });
+        });
 
         this.state = {
             mapCenter: {lng: 175.2908138, lat: -37.7906929},
@@ -218,7 +231,7 @@ export default class HomeScreen extends React.Component {
                             return <MapboxGL.PointAnnotation key={key}
                                                              id={item.id}
                                                              coordinate={[item.lng, item.lat]}
-                                                             onSelected={(e) => {this.props.navigation.navigate('Play', {coordinates: JSON.stringify([this.state.coordinates[key]])})}}
+                                                             onSelected={(e) => {this.props.navigation.navigate('Play', {coordinates: JSON.stringify([this.state.coordinates[key]]), mapCenter: JSON.stringify(this.state.mapCenter)})}}
                             />;
                         })}
                     </MapboxGL.MapView>
@@ -260,7 +273,7 @@ export default class HomeScreen extends React.Component {
                     }
 
                     <TouchableOpacity style={[styles.icon, styles.playIcon]}
-                                      onPress={() => this.props.navigation.navigate('Play', {coordinates: JSON.stringify(this.state.coordinates)})}>
+                                      onPress={() => this.props.navigation.navigate('Play', {coordinates: JSON.stringify(this.state.coordinates), mapCenter: JSON.stringify(this.state.mapCenter)})}>
                         <Image source={require('../assets/images/Play.png')}
                                style={styles.image} />
                     </TouchableOpacity>
