@@ -3,6 +3,7 @@ import {ActivityIndicator, Alert, AsyncStorage, BackHandler, Image, Modal, Text,
 import { StackActions, NavigationActions } from 'react-navigation';
 import Api from '../Components/Api';
 import {Colors} from "../Components/Colors";
+import {Constants} from "../Components/Constants";
 import { WebView } from 'react-native-webview';
 
 const resetAction = StackActions.reset({
@@ -121,7 +122,7 @@ export default class LoginScreen extends React.Component {
                             <ActivityIndicator size="large" color={Colors.primary}/>
                             <Text style={{color: Colors.text}}>Please wait ...</Text>
                         </View>}
-                        <WebView source={{uri: 'http://azurepins.com/terms.php'}} onLoadEnd={() => this.setState({webViewLoading: false})} />
+                        <WebView source={{uri: Constants.webPages.terms}} onLoadEnd={() => this.setState({webViewLoading: false})} />
                     </View>
                 </Modal>
                 <View style={{flex:1, alignItems: 'center'}}>

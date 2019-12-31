@@ -5,6 +5,7 @@ import Api from '../Components/Api';
 import { Rating } from 'react-native-elements';
 import { WebView } from 'react-native-webview';
 import {NavigationActions, StackActions} from "react-navigation";
+import {Constants} from "../Components/Constants";
 
 const api = new Api();
 const RATE_IMAGE = require('../assets/images/rate-icon.png');
@@ -14,8 +15,8 @@ export default class SettingScreen extends React.Component {
         super(props);
 
         this.state = {
-            active: 'notification',
-            notifications: [
+            active: 'myPins',
+            myPins: [
                     // {title: 'GooOoooOoooOoooAL', subtitle: 'FEBRUARY 22, 2019 5:32 PM', location: 'Manchester, UK', rate: 3, active: true},
                     // {title: 'Was a Foul!', subtitle: 'FEBRUARY 22, 2019 5:33 PM', location: 'Manchester, UK', rate: 2, active: true},
                     // {title: 'New Zealand', subtitle: 'FEBRUARY 22, 2019 7:16 PM', location: 'Hamilton, New Zealand', rate: 5, active: false},
@@ -27,14 +28,26 @@ export default class SettingScreen extends React.Component {
             ],
             ads: [],
             settings: [
-                {title: 'Help', url: "http://azurepins.com/FAQ.php"},
-                {title: 'Terms and Conditions', url: "http://azurepins.com/terms.php"},
-                {title: 'About', url: "http://azurepins.com/about.php"}],
+                {title: 'Help', url: Constants.webPages.help},
+                {title: 'Terms and Conditions', url: Constants.webPages.terms},
+                {title: 'About', url: Constants.webPages.about}],
             webModal: false,
             webModalName: "",
             webModalUrl: "",
             webViewLoading: true
         };
+    }
+
+    pinDateAndTime(timestamp) {
+        let dateTime = new Date(timestamp * 1000);
+        let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        let year = dateTime.getFullYear();
+        let month = months[dateTime.getMonth()];
+        let date = dateTime.getDate();
+        let hour = dateTime.getHours();
+        let minute = dateTime.getMinutes();
+
+        return { year, month, date, hour, minute };
     }
 
     componentDidMount() {
@@ -45,13 +58,7 @@ export default class SettingScreen extends React.Component {
                 if (response.result === "success") {
                     let bookmarks = [];
                     for(let i=0; i<response.bookmarks.length; i++) {
-                        let dateTime = new Date(response.bookmarks[i].timeStamp * 1000);
-                        let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                        let year = dateTime.getFullYear();
-                        let month = months[dateTime.getMonth()];
-                        let date = dateTime.getDate();
-                        let hour = dateTime.getHours();
-                        let minute = dateTime.getMinutes();
+                        const { year, month, date, hour, minute } = this.pinDateAndTime(response.bookmarks[i].timeStamp);
 
                         bookmarks.push({
                             id: response.bookmarks[i].pinId,
@@ -65,7 +72,7 @@ export default class SettingScreen extends React.Component {
                     this.setState({bookmarks});
                 }
             });
-        })
+        }).then((res) => {console.log("get user id from storage", res)});
     }
 
     deleteBookmark = (index) => {
@@ -106,15 +113,15 @@ export default class SettingScreen extends React.Component {
                 <Text style={{color: Colors.text}}>Nothing in here!</Text>
             </View>
         );
-        if (this.state.active === 'notification') {
-            if (this.state.notifications && this.state.notifications.length > 0)
-                content = (this.state.notifications.map(function(item, key) {
+        if (this.state.active === 'myPins') {
+            if (this.state.myPins && this.state.myPins.length > 0)
+                content = (this.state.myPins.map(function(item, key) {
                     return (
-                        <View style={{flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E3E3E3', height: 50, margin: 10, paddingBottom: 10}} key={key}>
+                        <View style={{flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.border2, height: 50, margin: 10, paddingBottom: 10}} key={key}>
                             <View style={{flex: 3, marginRight: 5}}>
-                                <Text style={{color: '#666666', fontSize: 12}}>{item.title}</Text>
-                                <Text style={{color: '#666666', fontSize: 10}}>{item.subtitle}</Text>
-                                <Text style={{color: '#666666', fontSize: 10}}>{item.location}</Text>
+                                <Text style={{color: Colors.text, fontSize: 12}}>{item.title}</Text>
+                                <Text style={{color: Colors.text, fontSize: 10}}>{item.subtitle}</Text>
+                                <Text style={{color: Colors.text, fontSize: 10}}>{item.location}</Text>
                             </View>
                             <View style={{flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginLeft: 5}}
                                   pointerEvents="none">
@@ -131,19 +138,21 @@ export default class SettingScreen extends React.Component {
             if (this.state.bookmarks && this.state.bookmarks.length > 0) {
                 content = (this.state.bookmarks.map(function (item, key) {
                     return (
-                        <View style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            borderBottomWidth: 1,
-                            borderBottomColor: '#E3E3E3',
-                            height: 50,
-                            margin: 10,
-                            paddingBottom: 10
-                        }} key={key}>
+                        <TouchableOpacity
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                borderBottomWidth: 1,
+                                borderBottomColor: Colors.border2,
+                                height: 50,
+                                margin: 10,
+                                paddingBottom: 10}}
+                            key={key}
+                            onPress={() => {/*this.props.navigation.navigate('Play', {coordinates: JSON.stringify([this.state.coordinates[key]]), mapCenter: JSON.stringify(this.state.mapCenter)})*/ToastAndroid.show('bookmark clicked', ToastAndroid.SHORT);}}>
                             <View style={{flex: 3, marginRight: 5}}>
-                                <Text style={{color: '#666666', fontSize: 12}}>{item.title}</Text>
-                                <Text style={{color: '#666666', fontSize: 10}}>{item.subtitle}</Text>
-                                <Text style={{color: '#666666', fontSize: 10}}>{item.location}</Text>
+                                <Text style={{color: Colors.text, fontSize: 12}}>{item.title}</Text>
+                                <Text style={{color: Colors.text, fontSize: 10}}>{item.subtitle}</Text>
+                                <Text style={{color: Colors.text, fontSize: 10}}>{item.location}</Text>
                             </View>
                             <View style={{
                                 flex: 2,
@@ -166,7 +175,7 @@ export default class SettingScreen extends React.Component {
                                            style={{width: 14, height: 18, margin: 5}}/>
                                 </TouchableOpacity>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     );
                 }));
             }
@@ -184,7 +193,7 @@ export default class SettingScreen extends React.Component {
                                     <TouchableOpacity onPress={() => {
                                         this.setState({webModal: true, webModalName: item.title, webModalUrl: item.url})
                                     }}>
-                                        <Text style={{color: '#666666'}}>{item.title}</Text>
+                                        <Text style={{color: Colors.text}}>{item.title}</Text>
                                     </TouchableOpacity>
                                 </View>
                             );
@@ -228,7 +237,7 @@ export default class SettingScreen extends React.Component {
                         <WebView source={{uri: this.state.webModalUrl}} onLoadEnd={() => this.setState({webViewLoading: false})}/>
                     </View>
                 </Modal>
-                <View style={{flexDirection:'row', borderBottomColor: '#E3E3E3', borderBottomWidth: 1, padding: 15, margin: 10}}>
+                <View style={{flexDirection:'row', borderBottomColor: Colors.border2, borderBottomWidth: 1, padding: 15, margin: 10}}>
                     <View style={{flex:2, alignItems: 'flex-end'}}>
                         <Image source={require('../assets/images/Logo_Text.png')}
                                style={{width: 129, height: 32}} />
@@ -242,12 +251,12 @@ export default class SettingScreen extends React.Component {
                 </View>
                 <View style={{flexDirection:'row', justifyContent: 'space-around', margin: 10}}>
                     <View style={styles.itemContainer}>
-                        <TouchableOpacity style={[styles.tabItem, this.state.active === 'notification' && styles.activeBackground]}
-                                          onPress={() => this.changeActiveTab('notification')}>
-                            <Image source={this.state.active === 'notification' ? require('../assets/images/Notification2.png') : require('../assets/images/Notification.png')}
+                        <TouchableOpacity style={[styles.tabItem, this.state.active === 'myPins' && styles.activeBackground]}
+                                          onPress={() => this.changeActiveTab('myPins')}>
+                            <Image source={this.state.active === 'myPins' ? require('../assets/images/Notification2.png') : require('../assets/images/Notification.png')}
                                    style={{width: 36, height: 32}} />
                         </TouchableOpacity>
-                        <Text style={styles.itemText}>Notification</Text>
+                        <Text style={styles.itemText}>My Pins</Text>
                     </View>
                     <View style={styles.itemContainer}>
                         <TouchableOpacity style={[styles.tabItem, this.state.active === 'bookmark' && styles.activeBackground]}
@@ -290,17 +299,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 50,
         borderWidth: 1,
-        borderColor: '#E3E3E3'
+        borderColor: Colors.border2
     },
     activeBackground: {
-        backgroundColor: '#2940B0'
+        backgroundColor: Colors.primaryDark
     },
     itemContainer: {
         justifyContent: 'center',
         alignItems: 'center'
     },
     itemText: {
-        color: '#666666',
+        color: Colors.text,
         marginTop: 5,
         fontSize: 12
     },
@@ -308,7 +317,7 @@ const styles = StyleSheet.create({
         flex:1,
         margin: 10,
         borderWidth: 1,
-        borderColor: '#E3E3E3',
+        borderColor: Colors.border2,
         borderRadius: 20
     }
 });
