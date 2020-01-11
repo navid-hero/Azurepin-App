@@ -2,7 +2,7 @@ import React from 'react';
 import {
     Alert,
     AsyncStorage,
-    StyleSheet,
+    ToastAndroid,
     Image,
     View,
     ScrollView,
@@ -18,7 +18,6 @@ import Api from '../Components/Api';
 import NetInfo from "@react-native-community/netinfo";
 import ViewPager from '@react-native-community/viewpager';
 import RNFetchBlob from "rn-fetch-blob";
-import * as ToastAndroid from "react-native";
 import Video from "react-native-video";
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import {Colors} from "../Components/Colors";
@@ -47,6 +46,9 @@ export default class PlayHalfScreen extends React.Component {
             searchResult: [],
             orderId: 0,
             rated: false,
+            rating: "",
+            likes: 0,
+            dislikes: 0,
             fullScreen: false,
             pinId: "",
             mute: true,
@@ -227,7 +229,18 @@ export default class PlayHalfScreen extends React.Component {
     }
 
     rate() {
-        this.setState({rated: !this.state.rated});
+        AsyncStorage.getItem('userId', (err, userId) => {
+            api.postRequest("Pin/LikePin", JSON.stringify([
+                {key: "UserId", value: userId},
+                {key: "PinId", value: this.state.pinId},
+                {key: "LikeType", value: rating.toString()}
+            ])).then((response) => {
+                if (response && response.result === "success") {
+                    ToastAndroid.show('rated successfully', ToastAndroid.SHORT);
+                    this.setState({rated: true, rating: rating});
+                }
+            })
+        });
     }
 
     goFullScreen = () => {
@@ -263,6 +276,9 @@ export default class PlayHalfScreen extends React.Component {
             playback: false,
             pinId: "",
             rated: false,
+            rating: "",
+            likes: 0,
+            dislikes: 0,
             initialRateValue: 3,
             title: "",
             lng: "",
@@ -299,18 +315,25 @@ export default class PlayHalfScreen extends React.Component {
 
                                     // set date time location
                                     this.setState({
-                                        title: "("+(index+1)+") "+coordinates[index].title,
+                                        title: coordinates[index].title,
                                         date: month + " " + date + " " + year + " / ",
                                         time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
                                         location: location,
                                         audio: audio,
-                                        video: video
+                                        video: video,
+                                        rated: (responseJson.likeDislike === 1 || responseJson.likeDislike === -1),
+                                        rating: responseJson.likeDislike,
+                                        likes: responseJson.likes,
+                                        dislikes: responseJson.dislikes,
                                     }, () => {
                                         coordinates[index].details = {
                                             pinId: coordinates[index].id,
-                                            rated: responseJson.hasLiked,
+                                            rated: (responseJson.likeDislike === 1 || responseJson.likeDislike === -1),
+                                            rating: responseJson.likeDislike,
+                                            likes: responseJson.likes,
+                                            dislikes: responseJson.dislikes,
                                             initialRateValue: (responseJson.likes / 20),
-                                            title: "("+(index+1)+") "+coordinates[index].title,
+                                            title: coordinates[index].title,
                                             lng: coordinates[index].lng,
                                             lat: coordinates[index].lat,
                                             date: month + " " + date + " " + year + " / ",
@@ -434,12 +457,23 @@ export default class PlayHalfScreen extends React.Component {
                                         <View style={{flex: 1}}>
                                             <Text style={styles.titleText} numberOfLines={1}>{this.state.title}</Text>
                                             <Text style={styles.subtitleText}>{this.state.date} {this.state.time} {this.state.location}</Text>
-                                            <TouchableOpacity onPress={(rating) => this.ratingCompleted(rating)}>
-                                                <Image
-                                                    source={this.state.rated ? require('../assets/images/Rated.png') : require('../assets/images/Rate.png')}
-                                                    style={{width: 95, height: 11, alignSelf: 'center', margin: 18}}/>
-                                            </TouchableOpacity>
-
+                                            {/*<TouchableOpacity onPress={(rating) => this.ratingCompleted(rating)}>*/}
+                                                {/*<Image*/}
+                                                    {/*source={this.state.rated ? require('../assets/images/Rated.png') : require('../assets/images/Rate.png')}*/}
+                                                    {/*style={{width: 95, height: 11, alignSelf: 'center', margin: 18}}/>*/}
+                                            {/*</TouchableOpacity>*/}
+                                            <View style={{flexDirection: 'row', justifyContent: 'space-around'}}>
+                                                <TouchableOpacity onPress={() => { this.ratingCompleted(1) }}>
+                                                    <Image source={this.state.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')} style={{width: 40, height: 40}} />
+                                                </TouchableOpacity>
+                                                <View>
+                                                    <Text style={{color: Colors.text, fontSize: 10}}>ratio</Text>
+                                                    <Text style={{color: Colors.text, fontSize: 10}}>{this.state.likes} : {this.state.dislikes}</Text>
+                                                </View>
+                                                <TouchableOpacity onPress={() => { this.ratingCompleted(-1) }}>
+                                                    <Image source={this.state.rating === -1 ? require('../assets/images/Disliked.png') : require('../assets/images/Dislike.png')} style={{width: 40, height: 40}} />
+                                                </TouchableOpacity>
+                                            </View>
                                             <View style={{
                                                 flexDirection: 'row',
                                                 justifyContent: 'space-between',

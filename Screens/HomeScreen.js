@@ -41,6 +41,7 @@ export default class HomeScreen extends React.Component {
 
         this.state = {
             mapCenter: {lng: 175.2908138, lat: -37.7906929},
+            mapCenterParam: {lng: "", lat: ""},
             nw: {lng: "", lat: ""},
             se: {lng: "", lat: ""},
             mapZoomLevel: 13,
@@ -104,12 +105,15 @@ export default class HomeScreen extends React.Component {
             Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
     }
 
-    getPins() {
+    async getPins() {
+        const center = await this._map.getCenter();
+        const mapCenterParam = {lng : center[0], lat : center[1]};
+        let coordinates = [];
         this.getCorners().then((corners) => {
             let nw = {lng: corners[1][0], lat: corners[0][1]};
             let se = {lng: corners[0][0], lat: corners[1][1]};
             let orderId = this.state.orderId+1;
-            this.setState({nw, se, orderId}, () => {
+            this.setState({nw, se, orderId, mapCenterParam, coordinates}, () => {
                 AsyncStorage.getItem('userId', (err, userId) => {
                     api.postRequest("Pin/GetPins", JSON.stringify([
                         {key: "UserId", value: userId},
@@ -125,7 +129,7 @@ export default class HomeScreen extends React.Component {
                             if (response && response.result === "success" && response.orderId === orderId.toString())
                                 if (response.pins && response.pins.length > 0) {
                                     let pins = response.pins;
-                                    let coordinates = [];
+
                                     for (let i=0; i<pins.length; i++)
                                         coordinates.push({
                                             id: pins[i].pinId.toString(),
@@ -134,7 +138,7 @@ export default class HomeScreen extends React.Component {
                                             title: pins[i].title
                                         });
 
-                                    this.setState({coordinates}, () => {this.forceUpdate();});
+                                    this.setState({coordinates}, () => {console.log("state coord",this.state.coordinates)});
                                 }
                                 else
                                     Alert.alert('Woops!', 'Looks something went wrong!');
@@ -221,17 +225,20 @@ export default class HomeScreen extends React.Component {
                         ref={c => (this._map = c)}
                         style={styles.map}
                         logoEnabled={false}
+                        rotateEnabled={false}
+                        compassEnabled={false}
                         zoomLevel={this.state.mapZoomLevel}
                         centerCoordinate={[this.state.mapCenter.lng, this.state.mapCenter.lat]}
                         showUserLocation={true}
                         onDidFinishRenderingMapFully={this.finishRenderMap}
-                        onRegionDidChange={() => this.getPins()}
+                        onRegionDidChange={() => setTimeout(() => {this.getPins()},100)}
                     >
                         {this.state.coordinates.map((item, key) => {
+                            console.log("creating marker", {lng: item.lng, lat: item.lat});
                             return <MapboxGL.PointAnnotation key={key}
                                                              id={item.id}
                                                              coordinate={[item.lng, item.lat]}
-                                                             onSelected={(e) => {this.props.navigation.navigate('Play', {coordinates: JSON.stringify([this.state.coordinates[key]]), mapCenter: JSON.stringify(this.state.mapCenter)})}}
+                                                             onSelected={(e) => {this.props.navigation.navigate('Play', {coordinates: JSON.stringify([this.state.coordinates[key]]), mapCenter: JSON.stringify(this.state.mapCenterParam)})}}
                             />;
                         })}
                     </MapboxGL.MapView>
@@ -250,7 +257,7 @@ export default class HomeScreen extends React.Component {
                             </TouchableOpacity>
                             <TextInput
                                 style={[styles.textInput, {position: this.state.search ? 'absolute' : 'relative'}]}
-                                placeholder="New Search"
+                                placeholder="Explore the world here! "
                                 onChangeText={text => this.searchPlaces(text)}
                                 value={this.state.searchQuery}
                             />
@@ -261,19 +268,19 @@ export default class HomeScreen extends React.Component {
                         </View> : <View></View>
                     }
 
-                    {this.state.searchResult ?
+                    {this.state.searchResult &&
                         <ScrollView style={[styles.placesContainer, {display: this.state.searchResult.length > 0 ? 'flex' : 'none', position: this.state.searchResult.length > 0 ? 'absolute' : 'relative'}]}>
                             {this.state.searchResult.map((item, key) => {
-                                return  <TouchableOpacity style={styles.searchResultItem}
+                                return  <TouchableOpacity key={key}
+                                                          style={styles.searchResultItem}
                                                           onPress={() => this.setCenterToResultItem(item.center[0], item.center[1])} >
                                     <Text style={styles.searchResultItemText}>{item.place_name}</Text>
                                 </TouchableOpacity>;
                             })}
-                        </ScrollView> : ''
-                    }
+                        </ScrollView>}
 
                     <TouchableOpacity style={[styles.icon, styles.playIcon]}
-                                      onPress={() => this.props.navigation.navigate('Play', {coordinates: JSON.stringify(this.state.coordinates), mapCenter: JSON.stringify(this.state.mapCenter)})}>
+                                      onPress={() => this.props.navigation.navigate('Play', {coordinates: JSON.stringify(this.state.coordinates), mapCenter: JSON.stringify(this.state.mapCenterParam)})}>
                         <Image source={require('../assets/images/Play.png')}
                                style={styles.image} />
                     </TouchableOpacity>

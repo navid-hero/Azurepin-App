@@ -696,10 +696,10 @@ export default class DropPinScreen extends React.Component {
 
                     <View style={[{margin: 3, height: 330}, this.state.audio && {justifyContent: 'center', alignItems: 'center', marginTop: 5}]}>
                         {this.state.audio ?
-                            <View>
+                            <View style={{flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, width: '100%', justifyContent: 'center', alignItems: 'center'}}>
                                 <Image source={require('../assets/images/Audio.png')}/>
                                 {this.state.finished &&
-                                <TouchableOpacity style={styles.playContent}
+                                <TouchableOpacity style={[styles.playContent, {top: '35%', left: '41%'}]}
                                                   onPress={() => {
                                                       this.togglePlay()
                                                   }}>
@@ -723,7 +723,7 @@ export default class DropPinScreen extends React.Component {
                                            }}
                                            style={{width: '100%', height: '100%'}}
                                     />
-                                    <TouchableOpacity style={styles.playContent}
+                                    <TouchableOpacity style={[styles.playContent, {top: '40%', left: '40%'}]}
                                                       onPress={() => {
                                                           this.togglePlay()
                                                       }}>
@@ -828,9 +828,7 @@ const styles = StyleSheet.create({
     playContent: {
         height: 60,
         width: 60,
-        position: 'absolute',
-        top: '41%',
-        left: '42%'
+        position: 'absolute'
     },
     progressBar: {
         flexDirection: 'row',

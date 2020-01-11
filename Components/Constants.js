@@ -3,6 +3,7 @@ export const Constants = {
     webPages: {
         help: "http://azurepins.com/FAQ.php",
         terms: "http://azurepins.com/terms.php",
-        about: "http://azurepins.com/about.php"
+        about: "http://azurepins.com/about.php",
+        feedback: "http://azurepins.com/Feedback.php",
     }
 };

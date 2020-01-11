@@ -23,8 +23,11 @@ class PlayScreen extends React.Component {
         this.state= {
             coordinates: [],
             pinId: "",
-            mute: true,
+            mute: false,
             rated: false,
+            rating: "",
+            likes: "",
+            dislikes: "",
             initialRateValue: 3,
             video: "",
             audio: "",
@@ -36,6 +39,7 @@ class PlayScreen extends React.Component {
             lat: "",
             lng: "",
             playBack: false,
+            paused: false,
             currentPositionSec: "",
             currentDurationSec: "",
             playTime: "",
@@ -58,6 +62,10 @@ class PlayScreen extends React.Component {
             coordinates[i].details = {};
         }
         this.setState({coordinates}, () => {console.log(this.state.coordinates)});
+    }
+
+    componentWillUnmount () {
+        this.setState({paused: true});
     }
 
     showActionSheet = () => {
@@ -216,6 +224,9 @@ class PlayScreen extends React.Component {
             playback: false,
             pinId: "",
             rated: false,
+            rating: "",
+            likes: "",
+            dislikes: "",
             initialRateValue: 3,
             title: "",
             lng: "",
@@ -252,19 +263,26 @@ class PlayScreen extends React.Component {
 
                                     // set date time location
                                     this.setState({
-                                        title: "("+(index+1)+") "+coordinates[index].title,
+                                        title: coordinates[index].title,
                                         date: month + " " + date + " " + year + " / ",
                                         time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
                                         location: location,
                                         duration: responseJson.duration,
                                         audio: audio,
-                                        video: video
+                                        video: video,
+                                        rated: (responseJson.likeDislike === 1 || responseJson.likeDislike === -1),
+                                        rating: responseJson.likeDislike,
+                                        likes: responseJson.likes,
+                                        dislikes: responseJson.dislikes
                                     }, () => {
                                         coordinates[index].details = {
                                             pinId: coordinates[index].id,
-                                            rated: responseJson.hasLiked,
+                                            rated: (responseJson.likeDislike === 1 || responseJson.likeDislike === -1),
+                                            rating: responseJson.likeDislike,
+                                            likes: responseJson.likes,
+                                            dislikes: responseJson.dislikes,
                                             initialRateValue: (responseJson.likes / 20),
-                                            title: "("+(index+1)+") "+coordinates[index].title,
+                                            title: coordinates[index].title,
                                             lng: coordinates[index].lng,
                                             lat: coordinates[index].lat,
                                             date: month + " " + date + " " + year + " / ",
@@ -327,7 +345,7 @@ class PlayScreen extends React.Component {
             ])).then((response) => {
                 if (response && response.result === "success") {
                     ToastAndroid.show('rated successfully', ToastAndroid.SHORT);
-                    this.setState({rated: true});
+                    this.setState({rated: true, rating: rating});
                 }
             })
         });
@@ -336,7 +354,7 @@ class PlayScreen extends React.Component {
     render() {
         return (
             <View style={{flex: 1}}>
-                <View style={{flexDirection:'row', justifyContent: 'space-between',borderBottomColor: '#E3E3E3', borderBottomWidth: 1, margin: 20}}>
+                <View style={{flexDirection:'row', justifyContent: 'center', alignItems: 'center', borderBottomColor: '#E3E3E3', borderBottomWidth: 1, margin: 10, padding: 10}}>
                     <ActionSheet
                         ref={o => (this.ActionSheet = o)}
                         options={this.state.optionArray}
@@ -350,24 +368,21 @@ class PlayScreen extends React.Component {
                             this.onActionButtonPressed(this.state.optionArray[index]);
                         }}
                     />
-                    <TouchableOpacity style={{margin:10, flexDirection: 'row'}}
-                                      onPress={() => {if(this.state.coordinates.length > 0) this.showActionSheet();}}>
+                    <TouchableOpacity style={{flex:1, justifyContent: 'center', alignItems:'flex-start'}} onPress={() => {if(this.state.coordinates.length > 0) this.showActionSheet();}}>
                         <Image
                             source={require('../assets/images/More.png')}
                             style={{ width: 20, height: 19 }}
                         />
-                        <Text style={{color: Colors.textMuted, fontSize: 12}}>  ({this.state.coordinates.length})</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity onPress={() => {this.props.navigation.navigate('Setting');}}>
+                    <TouchableOpacity style={{flex: 2, justifyContent: 'center', alignItems:'center'}} onPress={() => {this.props.navigation.navigate('Setting');}}>
                         <Image
                             source={require('../assets/images/Logo_Text.png')}
                             style={{ width: 129, height: 32 }}
                         />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={{padding:10}}
-                                      onPress={() => {this.props.navigation.pop();}}>
+                    <TouchableOpacity onPress={() => {this.props.navigation.pop();}} style={{flex: 1, justifyContent: 'center', alignItems:'flex-end', paddingRight: 15}}>
                         <Image
                             source={require('../assets/images/Cancel.png')}
                             style={{ width: 12, height: 12 }}
@@ -381,12 +396,12 @@ class PlayScreen extends React.Component {
                                    onPageSelected={(e) => this.onPageSelected(e)}>
                             {this.state.coordinates.map((item, key) => {
                                 return (<View key={key}>
-                                    <View style={{flex:1, flexDirection: 'row', paddingHorizontal: 10}}>
+                                    <View style={{flex:1, flexDirection: 'row'}}>
                                         <View style={{flex: 6}}>
                                             <Text style={styles.titleText}>{this.state.title}</Text>
                                             <Text style={styles.subtitleText}>{this.state.date}{this.state.time}{this.state.location}</Text>
                                         </View>
-                                        <View style={{flex: 1}}>
+                                        <View style={{flex: 1, alignItems: 'flex-end'}}>
                                             <TouchableOpacity onPress={() => this.props.navigation.navigate('Detail', {lat: this.state.lat, lng: this.state.lng})}>
                                                 <Image source={require('../assets/images/Location.png')}
                                                        style={{width: 40, height: 40}}/>
@@ -396,10 +411,9 @@ class PlayScreen extends React.Component {
                                     <View style={{flex:6}} >
                                         <View key={key} style={{backgroundColor: '$#9f9f9'}}>
                                             {this.state.audio ?
-                                                <View>
-                                                    <Image source={require('../assets/images/Audio.png')}
-                                                           style={{width: '100%', height: '100%'}} />
-                                                    <TouchableOpacity style={styles.playContent} onPress={() => {this.togglePlay()}}>
+                                                <View style={{borderWidth: 1, borderColor: Colors.border, borderRadius: 5, width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center'}}>
+                                                    <Image source={require('../assets/images/Audio.png')} />
+                                                    <TouchableOpacity style={[styles.playContent, {top: '36%'}]} onPress={() => {this.togglePlay()}}>
                                                         <Image source={this.state.playback ? require('../assets/images/Pasue-Button.png') : require('../assets/images/Play-Button.png')}
                                                                    style={{ height: 62, width: 62 }} />
                                                     </TouchableOpacity>
@@ -409,7 +423,7 @@ class PlayScreen extends React.Component {
                                                     <Video source={{uri: this.state.video}}
                                                            ref={(ref) => {this.player = ref }}
                                                            resizeMode="cover"
-                                                           paused={false/*!this.state.playBack*/}
+                                                           paused={this.state.paused}
                                                            muted={this.state.mute}
                                                         // onEnd={() => { this.setState({playBack: false}) }}
                                                         // bufferConfig={{
@@ -425,7 +439,7 @@ class PlayScreen extends React.Component {
                                                            repeat={true}
                                                            style={{width: '100%', height: '100%'}}
                                                     />
-                                                    <TouchableOpacity style={styles.playContent} onPress={() => {this.togglePlay()}}>
+                                                    <TouchableOpacity style={[styles.playContent, {top: '40%'}]} onPress={() => {this.togglePlay()}}>
                                                         {this.state.videoLoading ? <ActivityIndicator size="large" color={Colors.primary}/> : <Text></Text> }
                                                     </TouchableOpacity>
                                                 </View>
@@ -439,18 +453,34 @@ class PlayScreen extends React.Component {
                             {this.state.audio ? <Text></Text> :
                             <TouchableOpacity onPress={() => {this.enableDisableSound()}}>
                                 <Image source={this.state.mute ? require('../assets/images/Mute.png') : require('../assets/images/More-Volume.png')}
-                                       style={{ height: 19, width: 29 }} />
+                                       style={{ height: 19, width: 29, marginTop: 10 }} />
                             </TouchableOpacity>}
-                            <Rating
-                                type='custom'
-                                ratingImage={RATE_IMAGE}
-                                ratingColor={Colors.primary}
-                                ratingBackgroundColor={Colors.light}
-                                imageSize={15}
-                                onFinishRating={(rating) => this.ratingCompleted(rating)}
-                                readonly={this.state.rated}
-                                startingValue={this.state.initialRateValue}
-                            />
+                            {/*<Rating*/}
+                                {/*type='custom'*/}
+                                {/*ratingImage={RATE_IMAGE}*/}
+                                {/*ratingColor={Colors.primary}*/}
+                                {/*ratingBackgroundColor={Colors.light}*/}
+                                {/*imageSize={15}*/}
+                                {/*onFinishRating={(rating) => this.ratingCompleted(rating)}*/}
+                                {/*readonly={this.state.rated}*/}
+                                {/*startingValue={this.state.initialRateValue}*/}
+                            {/*/>*/}
+
+                            <View style={{flexDirection: 'row'}}>
+                                <TouchableOpacity onPress={() => { this.ratingCompleted(1) }}>
+                                    <Image source={this.state.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')}
+                                           style={{ height: 40, width: 40 }} />
+                                </TouchableOpacity>
+                                <View style={{paddingHorizontal: 10}}>
+                                    <Text style={{color: Colors.text, fontSize: 12}}>ratio</Text>
+                                    <Text style={{color: Colors.text, fontSize: 12}}>{this.state.likes} : {this.state.dislikes}</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => { this.ratingCompleted(-1) }}>
+                                    <Image source={this.state.rating === -1 ? require('../assets/images/Disliked.png') : require('../assets/images/Dislike.png')}
+                                           style={{ height: 40, width: 40 }} />
+                                </TouchableOpacity>
+                            </View>
+
                             <TouchableOpacity onPress={() => {this.onShare()}}>
                                 <Image source={require('../assets/images/Share.png')}
                                        style={{ height: 27, width: 19 }} />
@@ -477,7 +507,8 @@ class PlayScreen extends React.Component {
 const styles = {
     titleText: {
         color: '#666666',
-        fontSize: 15
+        fontSize: 15,
+        fontWeight: 'bold'
     },
     subtitleText: {
         color: '#666666',
@@ -487,8 +518,7 @@ const styles = {
         height: 62,
         width: 62,
         position: 'absolute',
-        top: '40%',
-        left: '40%'
+        left: '40%',
     }
 };
 
