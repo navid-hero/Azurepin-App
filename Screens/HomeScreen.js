@@ -231,14 +231,14 @@ export default class HomeScreen extends React.Component {
                         centerCoordinate={[this.state.mapCenter.lng, this.state.mapCenter.lat]}
                         showUserLocation={true}
                         onDidFinishRenderingMapFully={this.finishRenderMap}
-                        onRegionDidChange={() => setTimeout(() => {this.getPins()},100)}
+                        onRegionDidChange={() => this.getPins()}
                     >
                         {this.state.coordinates.map((item, key) => {
                             console.log("creating marker", {lng: item.lng, lat: item.lat});
                             return <MapboxGL.PointAnnotation key={key}
                                                              id={item.id}
                                                              coordinate={[item.lng, item.lat]}
-                                                             onSelected={(e) => {this.props.navigation.navigate('Play', {coordinates: JSON.stringify([this.state.coordinates[key]]), mapCenter: JSON.stringify(this.state.mapCenterParam)})}}
+                                                             onSelected={(e) => {this.props.navigation.navigate('Play', {coordinates: JSON.stringify([this.state.coordinates[key]]), mapCenter: JSON.stringify(this.state.mapCenterParam), zoomLevel: this._map.getZoom()})}}
                             />;
                         })}
                     </MapboxGL.MapView>

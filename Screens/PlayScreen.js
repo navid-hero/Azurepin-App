@@ -11,6 +11,7 @@ import { Colors } from "../Components/Colors";
 import { Constants } from "../Components/Constants";
 import RNFetchBlob from 'rn-fetch-blob'
 import ProgressBar from "react-native-progress/Bar";
+import {WebView} from "react-native-webview";
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
@@ -39,7 +40,7 @@ class PlayScreen extends React.Component {
             lat: "",
             lng: "",
             playBack: false,
-            paused: false,
+            paused: true,
             currentPositionSec: "",
             currentDurationSec: "",
             playTime: "",
@@ -165,7 +166,7 @@ class PlayScreen extends React.Component {
 
     async togglePlay() {
         if (this.state.video) {
-            this.setState({playBack: !this.state.playBack});
+            this.setState({paused: !this.state.paused});
         } else if (this.state.audio) {
             if (!this.state.playBack) {
                 await audioRecorderPlayer.startPlayer(this.state.audio).then(() => this.setState({playBack: true}));
@@ -190,6 +191,14 @@ class PlayScreen extends React.Component {
         }
     }
 
+    async beforeNavigate() {
+        if (this.state.video)
+            this.setState({paused: true});
+        else if (this.state.audio)
+            if (this.state.playBack)
+                await audioRecorderPlayer.pausePlayer().then(() => this.setState({playBack: false}));
+    }
+
     enableDisableSound() {
         this.setState({mute: !this.state.mute});
     }
@@ -198,7 +207,7 @@ class PlayScreen extends React.Component {
         try {
             const result = await Share.share({
                 message:
-                    'Azurepin | Share Me',
+                    this.state.uri,
             });
 
             if (result.action === Share.sharedAction) {
@@ -375,7 +384,7 @@ class PlayScreen extends React.Component {
                         />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={{flex: 2, justifyContent: 'center', alignItems:'center'}} onPress={() => {this.props.navigation.navigate('Setting');}}>
+                    <TouchableOpacity style={{flex: 2, justifyContent: 'center', alignItems:'center'}} onPress={() => {this.beforeNavigate(); this.props.navigation.navigate('Setting');}}>
                         <Image
                             source={require('../assets/images/Logo_Text.png')}
                             style={{ width: 129, height: 32 }}
@@ -391,30 +400,30 @@ class PlayScreen extends React.Component {
                 </View>
 
                 {this.state.coordinates.length > 0 ?
-                    <View style={{flex:1, margin: 20, marginTop: 0}}>
+                    <View style={{flex:1, margin: 0}}>
                         <ViewPager style={{flex: 5}} initialPage={0}
                                    onPageSelected={(e) => this.onPageSelected(e)}>
                             {this.state.coordinates.map((item, key) => {
                                 return (<View key={key}>
-                                    <View style={{flex:1, flexDirection: 'row'}}>
+                                    <View style={{flex:1, flexDirection: 'row', padding: 15}}>
                                         <View style={{flex: 6}}>
                                             <Text style={styles.titleText}>{this.state.title}</Text>
                                             <Text style={styles.subtitleText}>{this.state.date}{this.state.time}{this.state.location}</Text>
                                         </View>
                                         <View style={{flex: 1, alignItems: 'flex-end'}}>
-                                            <TouchableOpacity onPress={() => this.props.navigation.navigate('Detail', {lat: this.state.lat, lng: this.state.lng})}>
+                                            <TouchableOpacity onPress={() => {this.beforeNavigate(); this.props.navigation.navigate('Detail', {lat: this.state.lat, lng: this.state.lng});}}>
                                                 <Image source={require('../assets/images/Location.png')}
                                                        style={{width: 40, height: 40}}/>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
-                                    <View style={{flex:6}} >
+                                    <View style={{flex:6}}>
                                         <View key={key} style={{backgroundColor: '$#9f9f9'}}>
                                             {this.state.audio ?
                                                 <View style={{borderWidth: 1, borderColor: Colors.border, borderRadius: 5, width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center'}}>
                                                     <Image source={require('../assets/images/Audio.png')} />
-                                                    <TouchableOpacity style={[styles.playContent, {top: '36%'}]} onPress={() => {this.togglePlay()}}>
-                                                        <Image source={this.state.playback ? require('../assets/images/Pasue-Button.png') : require('../assets/images/Play-Button.png')}
+                                                    <TouchableOpacity style={[styles.playContent, {top: '36%'}]} onPress={() => this.togglePlay()}>
+                                                        <Image source={this.state.playBack ? require('../assets/images/Pasue-Button.png') : require('../assets/images/Play-Button.png')}
                                                                    style={{ height: 62, width: 62 }} />
                                                     </TouchableOpacity>
                                                 </View>
@@ -439,8 +448,10 @@ class PlayScreen extends React.Component {
                                                            repeat={true}
                                                            style={{width: '100%', height: '100%'}}
                                                     />
-                                                    <TouchableOpacity style={[styles.playContent, {top: '40%'}]} onPress={() => {this.togglePlay()}}>
-                                                        {this.state.videoLoading ? <ActivityIndicator size="large" color={Colors.primary}/> : <Text></Text> }
+                                                    <TouchableOpacity style={[styles.playContent, {top: '40%'}]} onPress={() => this.setState({paused: !this.state.paused})}>
+                                                        {this.state.videoLoading ? <ActivityIndicator size="large" color={Colors.primary}/> :
+                                                            <Image source={this.state.paused ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
+                                                                   style={{ height: 62, width: 62 }} />}
                                                     </TouchableOpacity>
                                                 </View>
                                             }
@@ -449,7 +460,7 @@ class PlayScreen extends React.Component {
                                 </View>);
                             })}
                         </ViewPager>
-                        <View style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', marginTop: 20}}>
+                        <View style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', padding: 15}}>
                             {this.state.audio ? <Text></Text> :
                             <TouchableOpacity onPress={() => {this.enableDisableSound()}}>
                                 <Image source={this.state.mute ? require('../assets/images/Mute.png') : require('../assets/images/More-Volume.png')}
@@ -493,7 +504,7 @@ class PlayScreen extends React.Component {
                 </View>}
                 <View style={{alignItems: 'center'}}>
                     <TouchableOpacity style={{position: 'absolute', bottom: 5}}
-                                      onPress={() => this.props.navigation.navigate('PlayHalf', {mapCenter: this.props.navigation.getParam('mapCenter')})}>
+                                      onPress={() => {this.beforeNavigate(); this.props.navigation.navigate('PlayHalf', {mapCenter: this.props.navigation.getParam('mapCenter'), zoomLevel:  this.props.navigation.getParam('zoomLevel'), coordinates: JSON.stringify(this.state.coordinates)});}}>
                         <Image source={require('../assets/images/Rectangle-64.png')}
                                style={{ height: 10, width: 150, borderRadius: 5 }} />
                     </TouchableOpacity>

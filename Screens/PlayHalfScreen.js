@@ -34,13 +34,16 @@ export default class PlayHalfScreen extends React.Component {
         super(props);
 
         const mapCenter = JSON.parse(this.props.navigation.getParam('mapCenter'));
+        const coordinates = JSON.parse(this.props.navigation.getParam('coordinates'));
+        const zoomLevel = this.props.navigation.getParam('zoomLevel');
 
         this.state = {
             mapCenter: mapCenter,
             nw: {lng: "", lat: ""},
             se: {lng: "", lat: ""},
-            mapZoomLevel: 13,
-            coordinates: [],
+            mapZoomLevel: zoomLevel,
+            coordinates: coordinates,
+            markers: coordinates,
             search: false,
             searchQuery: "",
             searchResult: [],
@@ -110,8 +113,9 @@ export default class PlayHalfScreen extends React.Component {
     }
 
     finishRenderMap() {
-        let mapCenter = JSON.parse(this.props.navigation.getParam('mapCenter'));
-        this.setState({mapCenter});
+        // let mapCenter = JSON.parse(this.props.navigation.getParam('mapCenter'));
+        // let coordinates = JSON.parse(this.props.navigation.getParam('coordinates'));
+        // this.setState({mapCenter, coordinates});
     }
 
     getPins() {
@@ -135,24 +139,24 @@ export default class PlayHalfScreen extends React.Component {
                             if (response && response.result === "success" && response.orderId === orderId.toString()) {
                                 if (response.pins && response.pins.length > 0) {
                                     let pins = response.pins;
-                                    let coordinates = [];
+                                    let markers = [];
                                     for (let i = 0; i < pins.length; i++)
-                                        coordinates.push({
+                                        markers.push({
                                             id: pins[i].pinId.toString(),
                                             lng: parseFloat(pins[i].longitude),
                                             lat: parseFloat(pins[i].latitude),
                                             title: pins[i].title
                                         });
 
-                                    this.setState({coordinates}, () => {
+                                    this.setState({markers}, () => {
                                         this.forceUpdate();
-                                        this.onPageSelected(0);
+                                        // this.onPageSelected(0);
                                     });
                                 }
                                 else
                                     Alert.alert('Woops!', 'Looks something went wrong!');
                             } else {
-                                this.setState({coordinates: []}, () => {
+                                this.setState({markers: []}, () => {
                                     this.forceUpdate();
                                 });
                             }
@@ -519,7 +523,7 @@ export default class PlayHalfScreen extends React.Component {
                                 onDidFinishRenderingMapFully={this.finishRenderMap}
                                 onRegionDidChange={() => this.getPins()}
                             >
-                                {this.state.coordinates.map((item, key) => {
+                                {this.state.markers.map((item, key) => {
                                     return <MapboxGL.PointAnnotation key={key} id={item.id} coordinate={[item.lng, item.lat]} />;
                                 })}
                             </MapboxGL.MapView>
@@ -560,7 +564,7 @@ export default class PlayHalfScreen extends React.Component {
                             }
 
                             <TouchableOpacity style={[styles.icon, styles.playIcon]}
-                                              onPress={() => this.props.navigation.navigate('Play', {coordinates: JSON.stringify(this.state.coordinates)})}>
+                                              onPress={() => this.props.navigation.navigate('Play', {coordinates: JSON.stringify(this.state.markers)})}>
                                 <Image source={require('../assets/images/Play.png')}
                                        style={styles.image} />
                             </TouchableOpacity>

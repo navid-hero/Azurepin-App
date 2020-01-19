@@ -41,8 +41,8 @@ export default class DropPinScreen extends React.Component {
             longitude: "",
             location: "Location",
             flashMode: true, // RNCamera.Constants.FlashMode.off,
-            video:true,
-            audio:false,
+            video:false,
+            audio:true,
             type: RNCamera.Constants.Type.back,
             imageToShow: "",
             recording: "start", // [start , recording , end]
@@ -99,7 +99,20 @@ export default class DropPinScreen extends React.Component {
         });
 
 
-        this.checkAllPermissions();
+        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA)
+            .then((hasPermission) => {
+                if (!hasPermission)
+                    this.requestPermissions(PermissionsAndroid.PERMISSIONS.CAMERA, 'Access Camera', 'Azurepin needs access to your camera')
+                        .then((response) => {console.log(response)});
+            });
+
+        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO)
+            .then((hasPermission) => {
+                if (!hasPermission)
+                    this.requestPermissions(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, 'Access Microphone', 'Azurepin needs access to your microphone')
+                        .then((response) => {console.log(response)});
+            });
+
     }
 
     prepareRecordingPath(audioPath){
@@ -115,24 +128,6 @@ export default class DropPinScreen extends React.Component {
     async requestPermissions(permission, title, message) {
         try {
             const granted = await PermissionsAndroid.request(
-                permission,
-                {
-                    title: title,
-                    message: message,
-                    buttonNeutral: 'Ask Me Later',
-                    buttonNegative: 'Cancel',
-                    buttonPositive: 'OK',
-                },
-            );
-            return granted === PermissionsAndroid.RESULTS.GRANTED;
-        } catch (err) {
-            return false;
-        }
-    }
-
-    nonAsyncRequestPermission(permission, title, message) {
-        try {
-            const granted = PermissionsAndroid.request(
                 permission,
                 {
                     title: title,
@@ -274,7 +269,7 @@ export default class DropPinScreen extends React.Component {
                 AsyncStorage.getItem('userId', (err, userId) => {
                     let fileName = userId.toString() + "_" + currentTimestamp.toString() + (type === "video" ? ".mp4" : ".aac");
                     console.log("start uploading...");
-                    ToastAndroid.show("your recording is uploading in background...", ToastAndroid.SHORT);
+                    ToastAndroid.show("Your recording is uploading in background ...", ToastAndroid.SHORT);
                     api.postRequest("Pin/UploadMedia", JSON.stringify([
                         {
                             key: "Pin", value: {
@@ -329,82 +324,45 @@ export default class DropPinScreen extends React.Component {
         });
     }
 
-    checkAllPermissions() {
-        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
-            .then((hasPermission) => {
-                if (!hasPermission)
-                    this.nonAsyncRequestPermission(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION, 'Access Camera', 'Azurepin needs access to your location')
-                        .then((response) => {
-                            // console.log(response)
-                            if(!response) return false;
-                        });
-
-                PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA)
-                    .then((hasPermission) => {
-                        if (!hasPermission)
-                            this.nonAsyncRequestPermission(PermissionsAndroid.PERMISSIONS.CAMERA, 'Access Camera', 'Azurepin needs access to your camera')
-                                .then((response) => {
-                                    // console.log(response)
-                                    if(!response) return false;
-                                });
-
-                        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO)
-                            .then((hasPermission) => {
-                                if (!hasPermission)
-                                    this.nonAsyncRequestPermission(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, 'Access Camera', 'Azurepin needs access to record audio')
-                                        .then((response) => {
-                                            // console.log(response)
-                                            if(!response) return false;
-                                        });
-
-                                return true;
-                            });
-                    });
-
-            });
-    }
-
     recordMedia = async () => {
-        if (this.checkAllPermissions()) {
-            if (this.state.video) {
-                if (this.state.recording === "start") { // start recording
-                    this.setDateTimeLocation();
-                    this.animate();
-                    this.setState({recording: "recording"});
-                    const options = {
-                        quality: RNCamera.Constants.VideoQuality['480p'],
-                        maxDuration: 59,
-                        videoBitrate: 2*1024*1024
-                    };
-                    const data = await this.camera.recordAsync(options);
-                    this.onRecordVideo(data.uri);
-                } else if (this.state.recording === "recording") { // stop recording
-                    this.setState({recording: "end"});
-                    const data = await this.camera.stopRecording();
+        if (this.state.video) {
+            if (this.state.recording === "start") { // start recording
+                this.setDateTimeLocation();
+                this.animate();
+                this.setState({recording: "recording"});
+                const options = {
+                    quality: RNCamera.Constants.VideoQuality['480p'],
+                    maxDuration: 59,
+                    videoBitrate: 2*1024*1024
+                };
+                const data = await this.camera.recordAsync(options);
+                this.onRecordVideo(data.uri);
+            } else if (this.state.recording === "recording") { // stop recording
+                this.setState({recording: "end"});
+                const data = await this.camera.stopRecording();
+            } else {
+                if (this.state.title.length > 0) {
+                    this.dropNewPin("video");
                 } else {
-                    if (this.state.title.length > 0) {
-                        this.dropNewPin("video");
-                    } else {
-                        //
-                    }
+                    //
                 }
-            } else if (this.state.audio) {
-                if (this.state.recording === "start") { // start recording
-                    this.setDateTimeLocation();
-                    this.animate();
+            }
+        } else if (this.state.audio) {
+            if (this.state.recording === "start") { // start recording
+                this.setDateTimeLocation();
+                this.animate();
 
-                    this._record();
+                this._record();
 
-                } else if (this.state.recording === "recording") { // stop recording
-                    this._stop();
-                    clearInterval(this.state.refreshIntervalId);
-                    this.setState({recording: "end"});
+            } else if (this.state.recording === "recording") { // stop recording
+                this._stop();
+                clearInterval(this.state.refreshIntervalId);
+                this.setState({recording: "end"});
+            } else {
+                if (this.state.title.length > 0) {
+                    this.dropNewPin("audio");
                 } else {
-                    if (this.state.title.length > 0) {
-                        this.dropNewPin("audio");
-                    } else {
-                        //
-                    }
+                    //
                 }
             }
         }

@@ -57,11 +57,11 @@ export default class SettingScreen extends React.Component {
             api.postRequest("Pin/GetBookmarksPin", JSON.stringify([
                 {key: "UserId", value: userId}
             ])).then((response) => {
-                console.log("my bookmarks", response);
                 if (response.result === "success") {
                     let bookmarks = [];
-                    for(let i=0; i<response.bookmarks.length; i++) {
-                        const { year, month, date, hour, minute } = this.pinDateAndTime(response.bookmarks[i].timeStamp);
+                    for (let i = 0; i < response.bookmarks.length; i++) {
+                        console.log("iterator", i);
+                        const {year, month, date, hour, minute} = this.pinDateAndTime(response.bookmarks[i].timeStamp);
 
                         bookmarks.push({
                             id: response.bookmarks[i].pinId,
@@ -74,6 +74,8 @@ export default class SettingScreen extends React.Component {
                         });
                     }
 
+                    console.log("bookmarks", bookmarks);
+
                     this.setState({bookmarks});
                 }
             });
@@ -82,24 +84,23 @@ export default class SettingScreen extends React.Component {
                 {key: "Page", value: 0},
                 {key: "Row", value: 10}
             ])).then((response) => {
-                console.log("my pins", response);
                 if (response.result === "success") {
                     let myPins = [];
-                    for(let i=0; i<response.pins.length; i++) {
-                        const { year, month, date, hour, minute } = this.pinDateAndTime(response.pins[i].timeStamp);
+                    for(let j=0; j<response.pins.length; j++) {
+                        const { year, month, date, hour, minute } = this.pinDateAndTime(response.pins[j].timeStamp);
 
                         myPins.push({
-                            id: response.pins[i].pinId,
-                            title: response.pins[i].title,
+                            id: response.pins[j].pinId,
+                            title: response.pins[j].title,
                             subtitle: month + " " + date + " " + year + " " + hour + ":" + minute,
-                            location: response.pins[i].location,
-                            rating: response.pins[i].likeDislike,
-                            likes: response.pins[i].likes,
-                            dislikes: response.pins[i].dislikes
+                            location: response.pins[j].location,
+                            rating: response.pins[j].likeDislike,
+                            likes: response.pins[j].likes,
+                            dislikes: response.pins[j].dislikes
                         });
                     }
 
-                    this.setState({myPins});
+                    this.setState({myPins}, () => console.log("pins", myPins));
                 }
             });
         }).then((res) => {console.log("get user id from storage", res)});
@@ -239,7 +240,7 @@ export default class SettingScreen extends React.Component {
         } else if (this.state.active === 'ad') {
                 content = (
                     <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', margin: 10, padding: 10}}>
-                        <Text style={{color: Colors.textMuted}}>Commin Soon...</Text>
+                        <Text style={{color: Colors.textMuted}}>Coming Soon!</Text>
                     </View>
                 );
         } else if (this.state.active === 'setting') {
@@ -325,7 +326,7 @@ export default class SettingScreen extends React.Component {
                             <Image source={this.state.active === 'bookmark' ? require('../assets/images/Icon2.png') : require('../assets/images/Icon.png')}
                                    style={{width: 21, height: 27}} />
                         </TouchableOpacity>
-                        <Text style={styles.itemText}>Bookmark</Text>
+                        <Text style={styles.itemText}>Bookmarks</Text>
                     </View>
                     <View style={styles.itemContainer}>
                         <TouchableOpacity style={[styles.tabItem, this.state.active === 'ad' && styles.activeBackground]}

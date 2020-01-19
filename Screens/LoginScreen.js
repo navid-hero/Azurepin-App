@@ -49,6 +49,7 @@ export default class LoginScreen extends React.Component {
             api.postRequest("User/SubmitEmail", JSON.stringify([{key: "Email", value: this.state.email}]))
                 .then((response) => {
                     this.setState({sendRequest: false});
+                    console.log("login response", response);
                     if (response && (response.result === "success" || response.result === "duplicate")) {
                         AsyncStorage.setItem('userId', response.userId.toString());
                         this.props.navigation.dispatch(resetAction);
