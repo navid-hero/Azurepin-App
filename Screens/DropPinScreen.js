@@ -15,6 +15,7 @@ import {
     View,
 } from "react-native";
 import { RNCamera } from 'react-native-camera';
+import {WebView} from "react-native-webview";
 import Video from 'react-native-video';
 import Geolocation from 'react-native-geolocation-service';
 import ProgressBar from 'react-native-progress/Bar';
@@ -328,8 +329,8 @@ export default class DropPinScreen extends React.Component {
         if (this.state.video) {
             if (this.state.recording === "start") { // start recording
                 this.setDateTimeLocation();
-                this.animate();
                 this.setState({recording: "recording"});
+                this.animate();
                 const options = {
                     quality: RNCamera.Constants.VideoQuality['480p'],
                     maxDuration: 59,
@@ -350,8 +351,6 @@ export default class DropPinScreen extends React.Component {
         } else if (this.state.audio) {
             if (this.state.recording === "start") { // start recording
                 this.setDateTimeLocation();
-                this.animate();
-
                 this._record();
 
             } else if (this.state.recording === "recording") { // stop recording
@@ -616,6 +615,7 @@ export default class DropPinScreen extends React.Component {
 
         try {
             const filePath = await AudioRecorder.startRecording();
+            this.animate();
         } catch (error) {
             console.error(error);
         }
@@ -735,6 +735,7 @@ export default class DropPinScreen extends React.Component {
                                 </View>
                                 :
                                 <View style={{flex: 1, flexDirection: 'column', backgroundColor: 'black', overflow: 'hidden'}}>
+                                    {/*<WebView source={{uri: "http://192.99.246.61/uploads/pins/1042_1579520948953.mp4"}} />*/}
                                     <RNCamera ref={cam => {this.camera = cam;}}
                                               style={{flex: 1}}
                                               type={type}

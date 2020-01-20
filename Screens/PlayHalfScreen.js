@@ -253,10 +253,7 @@ export default class PlayHalfScreen extends React.Component {
 
     onShare = async () => {
         try {
-            const result = await Share.share({
-                message:
-                    'Azurepin | Share This content',
-            });
+            const result = await Share.share({ message: this.state.uri });
 
             if (result.action === Share.sharedAction) {
                 if (result.activityType) {
@@ -423,7 +420,7 @@ export default class PlayHalfScreen extends React.Component {
             ])).then((response) => {
                 if (response && response.result === "success") {
                     ToastAndroid.show('rated successfully', ToastAndroid.SHORT);
-                    this.setState({rated: true});
+                    this.setState({rated: true, rating: rating});
                 }
             })
         });
@@ -434,7 +431,7 @@ export default class PlayHalfScreen extends React.Component {
             <View style={{flex: 1}}>
                 {this.state.fullScreen ? <Text></Text> :
                 this.state.coordinates && this.state.coordinates.length > 0 ?
-                    <ViewPager initialPage={0} style={{flex: 1}}
+                    <ViewPager initialPage={0} style={{flex: 8}}
                                onPageSelected={(e) => this.onPageSelected(e)}>
                         {this.state.coordinates.map((item, key) => {
                             return (
@@ -487,7 +484,7 @@ export default class PlayHalfScreen extends React.Component {
                                                 <TouchableOpacity onPress={() => {
                                                     this.onShare();
                                                 }}>
-                                                    <Image source={require('../assets/images/Share.png')}
+                                                    <Image source={require('../assets/images/Share_Small.png')}
                                                            style={{width: 13, height: 18}}/>
                                                 </TouchableOpacity>
                                                 <TouchableOpacity onPress={() => {this.goFullScreen();}}>
@@ -508,9 +505,9 @@ export default class PlayHalfScreen extends React.Component {
                                 </View>)})}
                         </ViewPager> :
 
-                    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}><Text>No items in playlist</Text></View>
+                    <View style={{flex: 8, justifyContent: 'center', alignItems: 'center'}}><Text>No items in playlist</Text></View>
                 }
-                <View style={{flex:2}}>
+                <View style={{flex:17}}>
                     <View style={styles.page}>
                         <View style={styles.container}>
                             <MapboxGL.MapView

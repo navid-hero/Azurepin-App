@@ -54,31 +54,6 @@ export default class SettingScreen extends React.Component {
 
     componentDidMount() {
         AsyncStorage.getItem('userId', (err, userId) => {
-            api.postRequest("Pin/GetBookmarksPin", JSON.stringify([
-                {key: "UserId", value: userId}
-            ])).then((response) => {
-                if (response.result === "success") {
-                    let bookmarks = [];
-                    for (let i = 0; i < response.bookmarks.length; i++) {
-                        console.log("iterator", i);
-                        const {year, month, date, hour, minute} = this.pinDateAndTime(response.bookmarks[i].timeStamp);
-
-                        bookmarks.push({
-                            id: response.bookmarks[i].pinId,
-                            title: response.bookmarks[i].title,
-                            subtitle: month + " " + date + " " + year + " " + hour + ":" + minute,
-                            location: response.bookmarks[i].location,
-                            rating: response.pins[i].likeDislike,
-                            likes: response.bookmarks[i].likes,
-                            dislikes: response.bookmarks[i].dislikes
-                        });
-                    }
-
-                    console.log("bookmarks", bookmarks);
-
-                    this.setState({bookmarks});
-                }
-            });
             api.postRequest("Pin/GetMyPins", JSON.stringify([
                 {key: "UserId", value: userId},
                 {key: "Page", value: 0},
@@ -103,6 +78,28 @@ export default class SettingScreen extends React.Component {
                     this.setState({myPins}, () => console.log("pins", myPins));
                 }
             });
+            api.postRequest("Pin/GetBookmarksPin", JSON.stringify([
+                {key: "UserId", value: userId}
+            ])).then((response) => {
+                if (response.result === "success") {
+                    let bookmarks = [];
+                    for (let i = 0; i < response.bookmarks.length; i++) {
+                        const {year, month, date, hour, minute} = this.pinDateAndTime(response.bookmarks[i].timeStamp);
+
+                        bookmarks.push({
+                            id: response.bookmarks[i].pinId,
+                            title: response.bookmarks[i].title,
+                            subtitle: month + " " + date + " " + year + " " + hour + ":" + minute,
+                            location: response.bookmarks[i].location,
+                            rating: response.bookmarks[i].likeDislike,
+                            likes: response.bookmarks[i].likes,
+                            dislikes: response.bookmarks[i].dislikes
+                        });
+                    }
+
+                    this.setState({bookmarks});
+                }
+            });
         }).then((res) => {console.log("get user id from storage", res)});
     }
 
@@ -112,6 +109,7 @@ export default class SettingScreen extends React.Component {
                 {key: "UserId", value: userId},
                 {key: "BookmarkId", value: index}
             ])).then((response) => {
+                console.log("delete bookmark response", response);
                 if (response.result === "success") {
                     ToastAndroid.show('bookmarked removed successfully', ToastAndroid.SHORT);
                     this.setState({bookmarks: this.state.bookmarks.filter(obj => {

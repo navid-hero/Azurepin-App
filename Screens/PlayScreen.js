@@ -205,10 +205,7 @@ class PlayScreen extends React.Component {
 
     onShare = async () => {
         try {
-            const result = await Share.share({
-                message:
-                    this.state.uri,
-            });
+            const result = await Share.share({ message: this.state.uri });
 
             if (result.action === Share.sharedAction) {
                 if (result.activityType) {
@@ -428,31 +425,8 @@ class PlayScreen extends React.Component {
                                                     </TouchableOpacity>
                                                 </View>
                                                 :
-                                                <View>
-                                                    <Video source={{uri: this.state.video}}
-                                                           ref={(ref) => {this.player = ref }}
-                                                           resizeMode="cover"
-                                                           paused={this.state.paused}
-                                                           muted={this.state.mute}
-                                                        // onEnd={() => { this.setState({playBack: false}) }}
-                                                        // bufferConfig={{
-                                                        //     minBufferMs: 5000,
-                                                        //     maxBufferMs: 5000,
-                                                        //     bufferForPlaybackMs: 5000,
-                                                        //     bufferForPlaybackAfterRebufferMs: 5000
-                                                        // }}
-                                                        // posterResizeMode="contain"
-                                                        // onLoadStart={() => {this.setState({videoLoading: true})}}
-                                                        // onBuffer={() => {this.setState({videoLoading: true})}}
-                                                        // onLoad={() => {this.setState({videoLoading: false})}}
-                                                           repeat={true}
-                                                           style={{width: '100%', height: '100%'}}
-                                                    />
-                                                    <TouchableOpacity style={[styles.playContent, {top: '40%'}]} onPress={() => this.setState({paused: !this.state.paused})}>
-                                                        {this.state.videoLoading ? <ActivityIndicator size="large" color={Colors.primary}/> :
-                                                            <Image source={this.state.paused ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
-                                                                   style={{ height: 62, width: 62 }} />}
-                                                    </TouchableOpacity>
+                                                <View style={{flex: 1}}>
+                                                    <WebView source={{uri: this.state.uri}} style={{width: 300}} />
                                                 </View>
                                             }
                                         </View>
@@ -493,8 +467,8 @@ class PlayScreen extends React.Component {
                             </View>
 
                             <TouchableOpacity onPress={() => {this.onShare()}}>
-                                <Image source={require('../assets/images/Share.png')}
-                                       style={{ height: 27, width: 19 }} />
+                                <Image source={require('../assets/images/Share_big.png')}
+                                       style={{ height: 27, width: 20 }} />
                             </TouchableOpacity>
                         </View>
                     </View>
