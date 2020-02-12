@@ -1,8 +1,14 @@
 import React from 'react';
-import {ActivityIndicator, Alert, AsyncStorage, Image, Text, View, TextInput, TouchableOpacity, StyleSheet} from "react-native";
+import {ActivityIndicator, Alert, AsyncStorage, Image, Text, View, KeyboardAvoidingView, ScrollView, TextInput, TouchableOpacity, StyleSheet} from "react-native";
 import { StackActions, NavigationActions } from 'react-navigation';
 import Api from '../Components/Api';
 import {Colors} from "../Components/Colors";
+
+const gotoLoginScreen = StackActions.reset({
+    index: 0,
+    actions: [NavigationActions.navigate({ routeName: 'Login' })],
+});
+
 const resetAction = StackActions.reset({
     index: 0,
     actions: [NavigationActions.navigate({ routeName: 'Home' })],
@@ -34,7 +40,7 @@ export default class CheckPasswordScreen extends React.Component {
                             AsyncStorage.setItem('logged_in', "true");
                             this.props.navigation.dispatch(resetAction);
                         } else {
-                            Alert.alert('Woops!', 'Looks something went wrong!');
+                            Alert.alert('Whoops!', 'Looks something went wrong!');
                         }
                     })
                     .catch((error) => {
@@ -47,7 +53,13 @@ export default class CheckPasswordScreen extends React.Component {
     render() {
         // const {navigate} = this.props.navigation;
         return (
-            <View style={{flex:1, alignItems: 'center'}}>
+            <View style={{flex: 1, alignItems: 'center'}} >
+                <View style={{margin: 20, padding: 20, alignSelf: 'flex-start'}}>
+                    <TouchableOpacity onPress={() => {this.props.navigation.dispatch(gotoLoginScreen);}}>
+                        <Image source={require('../assets/images/Back.png')}
+                               style={{width: 12, height: 21}}/>
+                    </TouchableOpacity>
+                </View>
                 <View style={{flex:1, justifyContent: 'center'}}>
                     <Image source={require('../assets/images/Eter_Number_Success_Icon.png')}
                            style={{width: 120, height: 153}}/>

@@ -147,6 +147,7 @@ export default class SettingScreen extends React.Component {
     logout() {
         AsyncStorage.removeItem('userId');
         AsyncStorage.removeItem('logged_in');
+        AsyncStorage.removeItem('email');
         const resetAction = StackActions.reset({
             index: 0,
             actions: [NavigationActions.navigate({ routeName: 'Login' })],
@@ -156,16 +157,17 @@ export default class SettingScreen extends React.Component {
 
     render() {
         let content = (
-            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', margin: 10, padding: 10}}>
+            <View style={[styles.content, {flex: 1, justifyContent: 'center', alignItems: 'center', margin: 10, padding: 10}]}>
                 <Text style={{color: Colors.text}}>Nothing in here!</Text>
             </View>
         );
         if (this.state.active === 'myPins') {
             const data = this;
             if (this.state.myPins && this.state.myPins.length > 0)
-                content = (this.state.myPins.map(function(item, key) {
+                content = (<ScrollView style={styles.content}>
+                    {this.state.myPins.map(function(item, key) {
                     return (
-                        <View style={{flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.border2, height: 50, margin: 10, paddingBottom: 10}}
+                        <View style={{flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.border2, height: 50, margin: 10, paddingBottom: 20}}
                                           key={key}>
                             <TouchableOpacity style={{flex: 3, marginRight: 5}}
                                               onPress={() => {data.props.navigation.navigate('Play', {coordinates: JSON.stringify([{id: item.id, title: item.title}]), mapCenter: JSON.stringify({lng: item.lng, lat: item.lat})})}}>
@@ -174,26 +176,27 @@ export default class SettingScreen extends React.Component {
                                 <Text style={{color: Colors.text, fontSize: 10}}>{item.location}</Text>
                             </TouchableOpacity>
                             <View style={{flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginLeft: 5}}>
-                                <View style={{flexDirection: 'row', justifyContent: 'space-around'}}>
+                                <View style={{flex: 5, flexDirection: 'row', justifyContent: 'space-around'}}>
                                     <Image source={item.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')} style={{width: 40, height: 40}} />
-                                    <View>
+                                    <View style={{alignItems: 'center'}}>
                                         <Text style={{color: Colors.text, fontSize: 10}}>ratio</Text>
                                         <Text style={{color: Colors.text, fontSize: 10}}>{item.likes} : {item.dislikes}</Text>
                                     </View>
                                     <Image source={item.rating === -1 ? require('../assets/images/Disliked.png') : require('../assets/images/Dislike.png')} style={{width: 40, height: 40}} />
                                 </View>
-                                <TouchableOpacity onPress={() => data.deletePin(item.id)} style={{padding: 10}}>
+                                <TouchableOpacity onPress={() => data.deletePin(item.id)} style={{flex: 1}}>
                                     <Image source={require('../assets/images/Union.png')}
                                            style={{width: 12, height: 12}}/>
                                 </TouchableOpacity>
                             </View>
                         </View>
                     );
-                }));
+                    })}</ScrollView>);
         } else if (this.state.active === 'bookmark') {
             const data = this;
             if (this.state.bookmarks && this.state.bookmarks.length > 0) {
-                content = (this.state.bookmarks.map(function (item, key) {
+                content = (<ScrollView style={styles.content}>
+                    {this.state.bookmarks.map(function (item, key) {
                     return (
                         <View
                             style={{
@@ -218,7 +221,7 @@ export default class SettingScreen extends React.Component {
                                 justifyContent: 'space-between',
                                 marginLeft: 5
                             }}>
-                                <View style={{flexDirection: 'row', justifyContent: 'space-around'}}>
+                                <View style={{flex: 4, flexDirection: 'row', justifyContent: 'space-around'}}>
                                     <Image source={item.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')} style={{width: 40, height: 40}} />
                                     <View>
                                         <Text style={{color: Colors.text, fontSize: 10}}>ratio</Text>
@@ -226,24 +229,24 @@ export default class SettingScreen extends React.Component {
                                     </View>
                                     <Image source={item.rating === -1 ? require('../assets/images/Disliked.png') : require('../assets/images/Dislike.png')} style={{width: 40, height: 40}} />
                                 </View>
-                                <TouchableOpacity onPress={() => data.deleteBookmark(item.id)} style={{padding: 10}}>
+                                <TouchableOpacity onPress={() => data.deleteBookmark(item.id)} style={{flex: 1}}>
                                     <Image source={require('../assets/images/Icon.png')}
                                            style={{width: 14, height: 18}}/>
                                 </TouchableOpacity>
                             </View>
                         </View>
                     );
-                }));
+                    })}</ScrollView>);
             }
         } else if (this.state.active === 'ad') {
                 content = (
-                    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', margin: 10, padding: 10}}>
+                    <View style={[styles.content, {flex: 1, justifyContent: 'center', alignItems: 'center', margin: 10, padding: 10}]}>
                         <Text style={{color: Colors.textMuted}}>Coming Soon!</Text>
                     </View>
                 );
         } else if (this.state.active === 'setting') {
             content = (
-                <View style={{flex: 1, justifyContent: 'space-between'}}>
+                <View style={[styles.content, {flex: 1, justifyContent: 'space-between'}]}>
                     <View>
                         {this.state.settings.map((item, key) => {
                             return (
@@ -343,9 +346,7 @@ export default class SettingScreen extends React.Component {
                         <Text style={styles.itemText}>Settings</Text>
                     </View>
                 </View>
-                <View style={styles.content}>
-                    {content}
-                </View>
+                {content}
             </View>
         );
     }
@@ -378,6 +379,7 @@ const styles = StyleSheet.create({
         margin: 10,
         borderWidth: 1,
         borderColor: Colors.border2,
-        borderRadius: 20
+        borderRadius: 20,
+        paddingTop: 10
     }
 });

@@ -3,6 +3,7 @@ import {
     Alert,
     StyleSheet,
     Image,
+    KeyboardAvoidingView,
     View,
     ScrollView,
     TouchableOpacity,
@@ -213,7 +214,7 @@ export default class HomeScreen extends React.Component {
             searchQuery: "",
             searchResult: [],
             mapCenter: {lng: lng, lat: lat},
-            mapZoomLevel: 11
+            mapZoomLevel: 5
         });
     }
 

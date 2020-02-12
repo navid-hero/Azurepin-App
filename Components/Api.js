@@ -34,9 +34,10 @@ export default class Api {
     async getLocationName(lat, lng) {
         const accessToken = "pk.eyJ1Ijoibmhlcm8iLCJhIjoiY2syZnMya2l1MGFrejNkbGhlczI1cjlnMCJ9.9QUBMhEvbP2RSkNfsjoQeA";
 
+        //
         return await fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/' + lng + ',' + lat + '.json?access_token=' + accessToken)
             .then((response) => response.json())
-            .then((responseJson) => responseJson.features[1].place_name)
+            .then((responseJson) => responseJson.features[0].context)
             .catch((error) => {
                 console.error(error);
             });

@@ -194,7 +194,8 @@ dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation "com.facebook.react:react-native:+"  // From node_modules
     implementation "androidx.appcompat:appcompat:1.0.0"
-    //implementation project(':mapbox-react-native-mapbox-gl')
+    // implementation project(':mapbox-react-native-mapbox-gl')
+    // implementation project(':react-native-video-processing')
 
     if (enableHermes) {
         def hermesPath = "../../node_modules/hermes-engine/android/";

@@ -6,16 +6,12 @@ import Api from '../Components/Api';
 import Video from 'react-native-video';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import ViewPager from '@react-native-community/viewpager';
-import { Rating } from 'react-native-elements';
 import { Colors } from "../Components/Colors";
 import { Constants } from "../Components/Constants";
 import RNFetchBlob from 'rn-fetch-blob'
-import ProgressBar from "react-native-progress/Bar";
-import {WebView} from "react-native-webview";
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
-const RATE_IMAGE = require('../assets/images/rate-icon.png');
 
 class PlayScreen extends React.Component {
     constructor(props) {
@@ -40,14 +36,14 @@ class PlayScreen extends React.Component {
             lat: "",
             lng: "",
             playBack: false,
-            paused: true,
+            paused: false,
             currentPositionSec: "",
             currentDurationSec: "",
             playTime: "",
             duration: "",
             hasLiked: false,
-            optionArray: ['Report', 'Bookmark', 'Copy Link', 'Save', 'Cancel'],
-            cancelButtonIndex: 4,
+            optionArray: ['Report', 'Bookmark', 'Copy Link', 'Save', 'Settings', 'Cancel'],
+            cancelButtonIndex: 5,
             destructiveButtonIndex: 0,
             videoLoading: false,
             start: "",
@@ -75,7 +71,7 @@ class PlayScreen extends React.Component {
 
     resetActionSheet() {
         this.setState({
-            optionArray: ['Report', 'Bookmark', 'Copy Link', 'Save', 'Cancel'],
+            optionArray: ['Report', 'Bookmark', 'Copy Link', 'Save', 'Settings', 'Cancel'],
             cancelButtonIndex: 4,
             destructiveButtonIndex: 0
         });
@@ -93,6 +89,10 @@ class PlayScreen extends React.Component {
                 this.onCopyLink();
                 break;
             case 'Save':
+                break;
+            case 'Settings':
+                this.beforeNavigate();
+                this.props.navigation.navigate('Setting');
                 break;
             case 'Spam':
                 this.onSpam();
@@ -169,6 +169,7 @@ class PlayScreen extends React.Component {
             this.setState({paused: !this.state.paused});
         } else if (this.state.audio) {
             if (!this.state.playBack) {
+                console.log("play", this.state.playBack);
                 await audioRecorderPlayer.startPlayer(this.state.audio).then(() => this.setState({playBack: true}));
                 audioRecorderPlayer.addPlayBackListener((e) => {
                     if (e.current_position === e.duration) {
@@ -184,6 +185,7 @@ class PlayScreen extends React.Component {
                     });
                 });
             } else {
+                console.log("pause", this.state.playBack);
                 await audioRecorderPlayer.pausePlayer().then(() => this.setState({playBack: false}));
             }
         } else {
@@ -255,7 +257,7 @@ class PlayScreen extends React.Component {
                             .then((responseJson) => {
                                 console.log(responseJson);
                                 if (responseJson && responseJson.result === "success") {
-                                    let dateTime = new Date(parseInt(responseJson.timestamp));
+                                    let dateTime = new Date(parseInt(responseJson.timestamp)*1000);
                                     let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                                     let year = dateTime.getFullYear();
                                     let month = months[dateTime.getMonth()];
@@ -417,16 +419,36 @@ class PlayScreen extends React.Component {
                                     <View style={{flex:6}}>
                                         <View key={key} style={{backgroundColor: '$#9f9f9'}}>
                                             {this.state.audio ?
-                                                <View style={{borderWidth: 1, borderColor: Colors.border, borderRadius: 5, width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center'}}>
-                                                    <Image source={require('../assets/images/Audio.png')} />
-                                                    <TouchableOpacity style={[styles.playContent, {top: '36%'}]} onPress={() => this.togglePlay()}>
-                                                        <Image source={this.state.playBack ? require('../assets/images/Pasue-Button.png') : require('../assets/images/Play-Button.png')}
-                                                                   style={{ height: 62, width: 62 }} />
+                                                <View style={{borderWidth: 1, borderColor: Colors.border, borderRadius: 5, height: '100%', marginHorizontal: 10, justifyContent: 'center', alignItems: 'center'}}>
+                                                    <TouchableOpacity onPress={() => this.togglePlay()}>
+                                                        <Image source={this.state.playBack ? require('../assets/images/Audio-Pause.png') : require('../assets/images/Audio-Play.png')} />
                                                     </TouchableOpacity>
                                                 </View>
                                                 :
-                                                <View style={{flex: 1}}>
-                                                    <WebView source={{uri: this.state.uri}} style={{width: 300}} />
+                                                <View>
+                                                    <Video source={{uri: this.state.video}}
+                                                           ref={(ref) => {this.player = ref }}
+                                                           resizeMode="contain"
+                                                           paused={this.state.paused}
+                                                           muted={this.state.mute}
+                                                        // onEnd={() => { this.setState({playBack: false}) }}
+                                                        // bufferConfig={{
+                                                        //     minBufferMs: 5000,
+                                                        //     maxBufferMs: 5000,
+                                                        //     bufferForPlaybackMs: 5000,
+                                                        //     bufferForPlaybackAfterRebufferMs: 5000
+                                                        // }}
+                                                        // posterResizeMode="contain"
+                                                        // onLoadStart={() => {this.setState({videoLoading: true})}}
+                                                        // onBuffer={() => {this.setState({videoLoading: true})}}
+                                                        // onLoad={() => {this.setState({videoLoading: false})}}
+                                                           repeat={true}
+                                                           style={{width: '100%', height: '100%'}}
+                                                    />
+                                                    <TouchableOpacity style={[styles.playContent, {top: '40%'}]} onPress={() => {this.togglePlay()}}>
+                                                        {this.state.videoLoading ? <ActivityIndicator size="large" color={Colors.primary}/> :
+                                                            <Image source={this.state.paused ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')} />}
+                                                    </TouchableOpacity>
                                                 </View>
                                             }
                                         </View>
@@ -435,11 +457,10 @@ class PlayScreen extends React.Component {
                             })}
                         </ViewPager>
                         <View style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', padding: 15}}>
-                            {this.state.audio ? <Text></Text> :
                             <TouchableOpacity onPress={() => {this.enableDisableSound()}}>
                                 <Image source={this.state.mute ? require('../assets/images/Mute.png') : require('../assets/images/More-Volume.png')}
                                        style={{ height: 19, width: 29, marginTop: 10 }} />
-                            </TouchableOpacity>}
+                            </TouchableOpacity>
                             {/*<Rating*/}
                                 {/*type='custom'*/}
                                 {/*ratingImage={RATE_IMAGE}*/}
@@ -456,9 +477,9 @@ class PlayScreen extends React.Component {
                                     <Image source={this.state.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')}
                                            style={{ height: 40, width: 40 }} />
                                 </TouchableOpacity>
-                                <View style={{paddingHorizontal: 10}}>
-                                    <Text style={{color: Colors.text, fontSize: 12}}>ratio</Text>
-                                    <Text style={{color: Colors.text, fontSize: 12}}>{this.state.likes} : {this.state.dislikes}</Text>
+                                <View style={{paddingHorizontal: 10, alignItems: 'center'}}>
+                                    <Text style={{color: Colors.text, fontSize: 10}}>ratio</Text>
+                                    <Text style={{color: Colors.text, fontSize: 10}}>{this.state.likes} : {this.state.dislikes}</Text>
                                 </View>
                                 <TouchableOpacity onPress={() => { this.ratingCompleted(-1) }}>
                                     <Image source={this.state.rating === -1 ? require('../assets/images/Disliked.png') : require('../assets/images/Dislike.png')}
@@ -466,9 +487,9 @@ class PlayScreen extends React.Component {
                                 </TouchableOpacity>
                             </View>
 
-                            <TouchableOpacity onPress={() => {this.onShare()}}>
-                                <Image source={require('../assets/images/Share_big.png')}
-                                       style={{ height: 27, width: 20 }} />
+                            <TouchableOpacity onPress={() => {this.onShare()}} style={{marginTop: 2}}>
+                                <Image source={require('../assets/images/Share.png')}
+                                       style={{ height: 24, width: 24 }} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -477,7 +498,7 @@ class PlayScreen extends React.Component {
                     <Text style={{color: Colors.text, textAlign: 'center', padding: 10}}>No playlist available for this area at the moment!</Text>
                 </View>}
                 <View style={{alignItems: 'center'}}>
-                    <TouchableOpacity style={{position: 'absolute', bottom: 5}}
+                    <TouchableOpacity style={{position: 'absolute', bottom: 0, padding: 10}}
                                       onPress={() => {this.beforeNavigate(); this.props.navigation.navigate('PlayHalf', {mapCenter: this.props.navigation.getParam('mapCenter'), zoomLevel:  this.props.navigation.getParam('zoomLevel'), coordinates: JSON.stringify(this.state.coordinates)});}}>
                         <Image source={require('../assets/images/Rectangle-64.png')}
                                style={{ height: 10, width: 150, borderRadius: 5 }} />

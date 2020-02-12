@@ -26,6 +26,8 @@ import {AudioRecorder, AudioUtils} from "react-native-audio";
 import Sound from 'react-native-sound';
 import NetInfo from "@react-native-community/netinfo";
 import Torch from 'react-native-torch';
+import RNMockLocationDetector from 'react-native-mock-location-detector';
+import { ProcessingManager } from 'react-native-video-processing';
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
@@ -113,6 +115,12 @@ export default class DropPinScreen extends React.Component {
                     this.requestPermissions(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, 'Access Microphone', 'Azurepin needs access to your microphone')
                         .then((response) => {console.log(response)});
             });
+
+        RNMockLocationDetector.checkMockLocationProvider(
+            "Mock Location Detected",
+            "Please remove any mock location app first to continue using this app.",
+            "I Understand"
+        );
 
     }
 
@@ -240,7 +248,11 @@ export default class DropPinScreen extends React.Component {
                     if (!state.isConnected) {
                         this.setState({location: "Unknown Location", latitude: lat, longitude: lng});
                     } else {
-                        api.getLocationName(lat, lng).then(response => {this.setState({location: response, latitude: lat, longitude: lng})});
+                        api.getLocationName(lat, lng).then(response => {
+                            let country = response[response.length-1].text;
+                            let city = response[0].text;
+                            this.setState({location: country + ", "+ city, latitude: lat, longitude: lng});
+                        });
                     }
                 });
             },
@@ -262,54 +274,91 @@ export default class DropPinScreen extends React.Component {
         this.setState({date, time});
     }
 
+    cropVideo() {
+        console.log("start cropping...");
+        const source = this.state.videoToShow;
+        ProcessingManager.getVideoInfo(source)
+            .then(({ duration, size, frameRate, bitrate }) => {
+                console.log("before", duration, size, frameRate, bitrate, "1");
+                const cropOptions = {
+                    cropOffsetX: 0,
+                    cropOffsetY: 140,
+                    cropWidth: 480,
+                    cropHeight: 480
+                };
+                ProcessingManager.crop(source, cropOptions).then((result) => {
+                    console.log("finished cropping", result);
+                    this.setState({videoToShow: result}, () => {
+                        ProcessingManager.getVideoInfo(result).then(({ duration, size, frameRate, bitrate }) => {
+                            console.log("after", duration, size, frameRate, bitrate, "2");
+                        });
+                    })
+                });
+            });
+    }
+
     dropNewPin(type, isDraft="0") {
         NetInfo.fetch().then(state => {
             if (state.isConnected) {
                 let currentTimestamp = Date.now();
 
-                AsyncStorage.getItem('userId', (err, userId) => {
-                    let fileName = userId.toString() + "_" + currentTimestamp.toString() + (type === "video" ? ".mp4" : ".aac");
-                    console.log("start uploading...");
-                    ToastAndroid.show("Your recording is uploading in background ...", ToastAndroid.SHORT);
-                    api.postRequest("Pin/UploadMedia", JSON.stringify([
-                        {
-                            key: "Pin", value: {
-                                name: fileName,
-                                type: type === "video" ? "video/mp4" : "audio/aac",
-                                uri: type === "video" ? this.state.videoToShow : 'file://'+this.state.audioPath
-                            }
-                        },
-                        {key: "UserId", value: userId}
-                    ])).then((responseJson) => {
-                        console.log(responseJson);
-                        if (responseJson && responseJson.result === "success") {
-                            api.postRequest("Pin/DropNewPin", JSON.stringify([
-                                {key: "UserId", value: userId.toString()},
-                                {key: "Title", value: this.state.title.toString()},
-                                {key: "Timestamp", value: currentTimestamp.toString()},
-                                {key: "Latitude", value: this.state.latitude.toString()},
-                                {key: "Longitude", value: this.state.longitude.toString()},
-                                {key: "Location", value: this.state.location.toString()},
-                                {key: "Duration", value: type === "video" ? "0" : this.state.currentTime},
-                                {key: "Type", value: type === "video" ? "2" : "1"},
-                                {key: "FileId", value: responseJson.fileId.toString()},
-                                {key: "IsDraft", value: isDraft}
-                            ])).then((responseJson) => {
-                                console.log(responseJson);
-                                if (responseJson && responseJson.result === "success") {
-                                    let message = isDraft === "0" ? 'Your pin dropped successfully' : 'Your recording has been drafted!';
-                                    ToastAndroid.show(message, ToastAndroid.LONG);
-                                    if (isDraft === "1") this.putDraftInStorage(responseJson.pinId);
-                                } else {
-                                    ToastAndroid.show('Unable to communicate with server', ToastAndroid.LONG);
-                                }
-                            });
-                        } else {
-                            ToastAndroid.show('Unable to upload file', ToastAndroid.LONG);
-                        }
+                const source = this.state.videoToShow;
+                ProcessingManager.getVideoInfo(source)
+                    .then(({ duration, size, frameRate, bitrate }) => {
+                        const cropOptions = {
+                            cropOffsetX: 0,
+                            cropOffsetY: 120,
+                            cropWidth: 480,
+                            cropHeight: 480
+                        };
+                        ProcessingManager.crop(source, cropOptions).then((result) => {
+                            this.setState({videoToShow: result}, () => {
+                                AsyncStorage.getItem('userId', (err, userId) => {
+                                    let fileName = userId.toString() + "_" + currentTimestamp.toString() + (type === "video" ? ".mp4" : ".aac");
+                                    console.log("start uploading...");
+                                    ToastAndroid.show("Your recording is uploading in background ...", ToastAndroid.SHORT);
+                                    api.postRequest("Pin/UploadMedia", JSON.stringify([
+                                        {
+                                            key: "Pin", value: {
+                                                name: fileName,
+                                                type: type === "video" ? "video/mp4" : "audio/aac",
+                                                uri: type === "video" ? this.state.videoToShow : 'file://'+this.state.audioPath
+                                            }
+                                        },
+                                        {key: "UserId", value: userId}
+                                    ])).then((responseJson) => {
+                                        console.log(responseJson);
+                                        if (responseJson && responseJson.result === "success") {
+                                            api.postRequest("Pin/DropNewPin", JSON.stringify([
+                                                {key: "UserId", value: userId.toString()},
+                                                {key: "Title", value: this.state.title.toString()},
+                                                {key: "Timestamp", value: currentTimestamp.toString()},
+                                                {key: "Latitude", value: this.state.latitude.toString()},
+                                                {key: "Longitude", value: this.state.longitude.toString()},
+                                                {key: "Location", value: this.state.location.toString()},
+                                                {key: "Duration", value: type === "video" ? duration : this.state.currentTime},
+                                                {key: "Type", value: type === "video" ? "2" : "1"},
+                                                {key: "FileId", value: responseJson.fileId.toString()},
+                                                {key: "IsDraft", value: isDraft}
+                                            ])).then((responseJson) => {
+                                                console.log(responseJson);
+                                                if (responseJson && responseJson.result === "success") {
+                                                    let message = isDraft === "0" ? 'Your pin dropped successfully' : 'Your recording has been drafted!';
+                                                    ToastAndroid.show(message, ToastAndroid.LONG);
+                                                    if (isDraft === "1") this.putDraftInStorage(responseJson.pinId);
+                                                } else {
+                                                    ToastAndroid.show('Unable to communicate with server', ToastAndroid.LONG);
+                                                }
+                                            });
+                                        } else {
+                                            ToastAndroid.show('Unable to upload file', ToastAndroid.LONG);
+                                        }
+                                    });
+                                    setTimeout(() => {this.props.navigation.pop();}, 1000);
+                                });
+                            })
+                        });
                     });
-                    setTimeout(() => {this.props.navigation.pop();}, 1000);
-                });
             } else {
                 Alert.alert(
                     'No Internet Connection',
@@ -344,6 +393,7 @@ export default class DropPinScreen extends React.Component {
             } else {
                 if (this.state.title.length > 0) {
                     this.dropNewPin("video");
+                    // this.cropVideo();
                 } else {
                     //
                 }
@@ -571,6 +621,7 @@ export default class DropPinScreen extends React.Component {
                             this.setState({audioPlayback: true}); // finish play
                         } else {
                             console.log('playback failed due to audio decoding errors');
+                            this.setState({audioPlayback: true}); // unable to play
                         }
                     });
                 }, 100);
@@ -739,7 +790,6 @@ export default class DropPinScreen extends React.Component {
                                     <RNCamera ref={cam => {this.camera = cam;}}
                                               style={{flex: 1}}
                                               type={type}
-                                              flashMode="on"
                                               defaultVideoQuality={RNCamera.Constants.VideoQuality['480p']}
                                               androidCameraPermissionOptions={{
                                                   title: 'Permission to use camera',

@@ -22,7 +22,9 @@ export default class DetailScreen extends React.Component {
         MapboxGL.setTelemetryEnabled(false);
 
         api.getLocationName(this.state.coordinate.lat, this.state.coordinate.lng).then(response => {
-            this.setState({location: response});
+            let country = response[response.length-1].text;
+            let city = response[0].text;
+            this.setState({location: country + ", "+ city});
         });
     }
 

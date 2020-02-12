@@ -13,7 +13,15 @@ export default class splashScreen extends React.Component {
         AsyncStorage.getItem('userId', (err, userId) => {
             AsyncStorage.getItem('logged_in', (err, loggedIn) => {
                 setTimeout(() => {
-                    let nextScreen = (userId > 0 && loggedIn) ? "Home" : "Login";
+                    // let nextScreen = (userId > 0 && loggedIn) ? "Home" : "Login";
+                    let nextScreen = "Login";
+                    if (userId > 0) {
+                        if (loggedIn) {
+                            nextScreen = "Home";
+                        } else {
+                            nextScreen = "CheckPassword";
+                        }
+                    }
 
                     const resetAction = StackActions.reset({
                         index: 0,

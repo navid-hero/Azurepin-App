@@ -467,7 +467,7 @@ export default class PlayHalfScreen extends React.Component {
                                                 <TouchableOpacity onPress={() => { this.ratingCompleted(1) }}>
                                                     <Image source={this.state.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')} style={{width: 40, height: 40}} />
                                                 </TouchableOpacity>
-                                                <View>
+                                                <View style={{alignItems: 'center'}}>
                                                     <Text style={{color: Colors.text, fontSize: 10}}>ratio</Text>
                                                     <Text style={{color: Colors.text, fontSize: 10}}>{this.state.likes} : {this.state.dislikes}</Text>
                                                 </View>
@@ -481,11 +481,9 @@ export default class PlayHalfScreen extends React.Component {
                                                 alignItems: 'center',
                                                 margin: 5
                                             }}>
-                                                <TouchableOpacity onPress={() => {
-                                                    this.onShare();
-                                                }}>
-                                                    <Image source={require('../assets/images/Share_Small.png')}
-                                                           style={{width: 13, height: 18}}/>
+                                                <TouchableOpacity onPress={() => {this.onShare();}} style={{marginTop: -2}}>
+                                                    <Image source={require('../assets/images/Share.png')}
+                                                           style={{width: 20, height: 20}}/>
                                                 </TouchableOpacity>
                                                 <TouchableOpacity onPress={() => {this.goFullScreen();}}>
                                                     <Image source={require('../assets/images/Cancel.png')}
@@ -499,7 +497,7 @@ export default class PlayHalfScreen extends React.Component {
                                         <TouchableOpacity onPress={() => {this.props.navigation.goBack();}}
                                                           style={{alignSelf: 'center'}} >
                                             <Image source={require('../assets/images/Rectangle-64.png')}
-                                                   style={{width: 145, height: 10, borderRadius: 10}}/>
+                                                   style={{width: 145, height: 10, borderRadius: 10}} />
                                         </TouchableOpacity>
                                     </View>
                                 </View>)})}

@@ -1,16 +1,17 @@
 import React from 'react';
-import {ActivityIndicator, Alert, AsyncStorage, BackHandler, Image, Modal, Text, View, TextInput, TouchableOpacity, StyleSheet, ScrollView} from "react-native";
+import {ActivityIndicator, Alert, AsyncStorage, BackHandler, Image, KeyboardAvoidingView, Modal, Text, View, TextInput, TouchableOpacity, StyleSheet, ScrollView} from "react-native";
 import { StackActions, NavigationActions } from 'react-navigation';
 import Api from '../Components/Api';
 import {Colors} from "../Components/Colors";
 import {Constants} from "../Components/Constants";
 import { WebView } from 'react-native-webview';
 
+/*
 const resetAction = StackActions.reset({
     index: 0,
     actions: [NavigationActions.navigate({ routeName: 'CheckPassword' })],
 });
-
+*/
 const api = new Api();
 
 export default class LoginScreen extends React.Component {
@@ -28,16 +29,15 @@ export default class LoginScreen extends React.Component {
     }
 
     componentDidMount() {
-        AsyncStorage.getItem('accepted_agreement', (err, value) => {
-            console.log("accepted_agreement", value);
-            if (!value)
-                this.setState({termsModal: true});
+        AsyncStorage.getItem('accepted_agreement', (err, agreement) => {
+            AsyncStorage.getItem('email', (err, email) => {
+                this.setState({email: email, termsModal: !agreement});
+            });
         });
     }
 
     onChangeEmail(email) {
-        let emailValidationFailed = true;
-        if (email.length > 0) emailValidationFailed = false;
+        let emailValidationFailed = (!email.length > 0);
         this.setState({email, emailValidationFailed});
     }
 
@@ -49,12 +49,12 @@ export default class LoginScreen extends React.Component {
             api.postRequest("User/SubmitEmail", JSON.stringify([{key: "Email", value: this.state.email}]))
                 .then((response) => {
                     this.setState({sendRequest: false});
-                    console.log("login response", response);
                     if (response && (response.result === "success" || response.result === "duplicate")) {
                         AsyncStorage.setItem('userId', response.userId.toString());
-                        this.props.navigation.dispatch(resetAction);
+                        AsyncStorage.setItem('email', this.state.email);
+                        this.props.navigation.navigate('CheckPassword');
                     } else {
-                        Alert.alert('Woops!', 'Looks something went wrong! Please try again.');
+                        Alert.alert('Whoops!', 'Looks something went wrong! Please try again.');
                     }
                 })
                 .catch((error) => {
@@ -65,17 +65,14 @@ export default class LoginScreen extends React.Component {
 
     acceptAgreement() {
         AsyncStorage.setItem('accepted_agreement', "true", () => {
-            AsyncStorage.getItem('accepted_agreement', (err, value) => {
-                console.log("accepted_agreement", value);
-            });
+            this.setState({termsModal: false});
         });
-        this.setState({termsModal: false});
     }
 
     render() {
         // const {navigate} = this.props.navigation;
         return (
-            <ScrollView contentContainerStyle={styles.contentContainer}>
+            <KeyboardAvoidingView style={styles.contentContainer} contentContainerStyle={styles.contentContainer}>
                 <Modal
                     animationType="slide"
                     transparent={true}
@@ -110,6 +107,7 @@ export default class LoginScreen extends React.Component {
                     animationType="slide"
                     transparent={false}
                     visible={this.state.webModal}
+                    onRequestClose={() => {this.setState({webModal: false})}}
                 >
                     <View style={{flex: 1}}>
                         <View style={{borderBottomWidth: 1, borderBottomColor: Colors.border, margin: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
@@ -142,7 +140,9 @@ export default class LoginScreen extends React.Component {
                         <View style={styles.buttonContainer}>
                             <View style={styles.textInputContainer}>
                                 <TextInput placeholder="example@website.com"
-                                           keyboardType="email-address" style={styles.textInput}
+                                           keyboardType="email-address"
+                                           value={this.state.email}
+                                           style={styles.textInput}
                                            onChangeText={(email) => this.onChangeEmail(email)} />
                             </View >
                             <Text style={{color: Colors.danger, display: this.state.emailValidationFailed ? 'flex' : 'none'}}>Please enter a valid email address</Text>
@@ -164,7 +164,7 @@ export default class LoginScreen extends React.Component {
                         </View>
                     </View>
                 </View>
-            </ScrollView>
+            </KeyboardAvoidingView>
         );
     }
 }
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
         borderRadius:50,
         width: 100,
         margin: 40,
-        marginBottom: 10,
+        marginBottom: 0,
     },
     submitButtonText: {
         color: '#007BFE',
