@@ -1,5 +1,5 @@
 import React from 'react';
-import {ActivityIndicator, AsyncStorage, Image, Modal, ScrollView, StyleSheet, ToastAndroid, Text, TouchableOpacity, View} from "react-native";
+import {Alert, ActivityIndicator, AsyncStorage, Image, Modal, ScrollView, StyleSheet, ToastAndroid, Text, TouchableOpacity, View} from "react-native";
 import {Colors} from "../Components/Colors";
 import Api from '../Components/Api';
 import { Rating } from 'react-native-elements';
@@ -47,7 +47,7 @@ export default class SettingScreen extends React.Component {
         let month = months[dateTime.getMonth()];
         let date = dateTime.getDate();
         let hour = dateTime.getHours();
-        let minute = dateTime.getMinutes();
+        let minute = dateTime.getMinutes().toString().length < 2 ? "0"+dateTime.getMinutes() : dateTime.getMinutes();
 
         return { year, month, date, hour, minute };
     }
@@ -59,6 +59,7 @@ export default class SettingScreen extends React.Component {
                 {key: "Page", value: 0},
                 {key: "Row", value: 10}
             ])).then((response) => {
+                console.log("my pins", response);
                 if (response.result === "success") {
                     let myPins = [];
                     for(let j=0; j<response.pins.length; j++) {
@@ -67,7 +68,7 @@ export default class SettingScreen extends React.Component {
                         myPins.push({
                             id: response.pins[j].pinId,
                             title: response.pins[j].title,
-                            subtitle: month + " " + date + " " + year + " " + hour + ":" + minute,
+                            subtitle: hour + ":" + minute + "/ " + date + " " + month + " " + year,
                             location: response.pins[j].location,
                             rating: response.pins[j].likeDislike,
                             likes: response.pins[j].likes,
@@ -81,6 +82,7 @@ export default class SettingScreen extends React.Component {
             api.postRequest("Pin/GetBookmarksPin", JSON.stringify([
                 {key: "UserId", value: userId}
             ])).then((response) => {
+                console.log("my bookmarks", response);
                 if (response.result === "success") {
                     let bookmarks = [];
                     for (let i = 0; i < response.bookmarks.length; i++) {
@@ -89,7 +91,7 @@ export default class SettingScreen extends React.Component {
                         bookmarks.push({
                             id: response.bookmarks[i].pinId,
                             title: response.bookmarks[i].title,
-                            subtitle: month + " " + date + " " + year + " " + hour + ":" + minute,
+                            subtitle: hour + ":" + minute + "/ " + date + " " + month + " " + year,
                             location: response.bookmarks[i].location,
                             rating: response.bookmarks[i].likeDislike,
                             likes: response.bookmarks[i].likes,
@@ -123,21 +125,31 @@ export default class SettingScreen extends React.Component {
     };
 
     deletePin = (index) => {
-        AsyncStorage.getItem('userId', (err, userId) => {
-            api.postRequest('Pin/DeleteMyPin', JSON.stringify([
-                {key: "UserId", value: userId},
-                {key: "PinId", value: index}
-            ])).then((response) => {
-                if (response.result === "success") {
-                    ToastAndroid.show('Pin removed successfully', ToastAndroid.SHORT);
-                    this.setState({myPins: this.state.myPins.filter(obj => {
-                            if (obj.id !== index) return obj;
-                        })});
-                } else {
-                    ToastAndroid.show(response.message, ToastAndroid.SHORT);
-                }
-            });
-        });
+        Alert.alert(
+            'Delete Pin',
+            'Be careful, this action can not be undone!',
+            [
+                {text: 'Delete', onPress: () => {
+                        AsyncStorage.getItem('userId', (err, userId) => {
+                            api.postRequest('Pin/DeleteMyPin', JSON.stringify([
+                                {key: "UserId", value: userId},
+                                {key: "PinId", value: index}
+                            ])).then((response) => {
+                                if (response.result === "success") {
+                                    ToastAndroid.show('Pin removed successfully', ToastAndroid.SHORT);
+                                    this.setState({myPins: this.state.myPins.filter(obj => {
+                                            if (obj.id !== index) return obj;
+                                        })});
+                                } else {
+                                    ToastAndroid.show(response.message, ToastAndroid.SHORT);
+                                }
+                            });
+                        });
+                    }},
+                {text: 'Cancel', onPress: () => {}, style: 'cancel'},
+            ],
+            {cancelable: true},
+        );
     }
 
     changeActiveTab(tab) {
@@ -163,35 +175,65 @@ export default class SettingScreen extends React.Component {
         );
         if (this.state.active === 'myPins') {
             const data = this;
-            if (this.state.myPins && this.state.myPins.length > 0)
+            if (this.state.myPins && this.state.myPins.length > 0) {
                 content = (<ScrollView style={styles.content}>
-                    {this.state.myPins.map(function(item, key) {
-                    return (
-                        <View style={{flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.border2, height: 50, margin: 10, paddingBottom: 20}}
-                                          key={key}>
-                            <TouchableOpacity style={{flex: 3, marginRight: 5}}
-                                              onPress={() => {data.props.navigation.navigate('Play', {coordinates: JSON.stringify([{id: item.id, title: item.title}]), mapCenter: JSON.stringify({lng: item.lng, lat: item.lat})})}}>
-                                <Text style={{color: Colors.text, fontSize: 12}}>{item.title}</Text>
-                                <Text style={{color: Colors.text, fontSize: 10}}>{item.subtitle}</Text>
-                                <Text style={{color: Colors.text, fontSize: 10}}>{item.location}</Text>
-                            </TouchableOpacity>
-                            <View style={{flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginLeft: 5}}>
-                                <View style={{flex: 5, flexDirection: 'row', justifyContent: 'space-around'}}>
-                                    <Image source={item.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')} style={{width: 40, height: 40}} />
-                                    <View style={{alignItems: 'center'}}>
-                                        <Text style={{color: Colors.text, fontSize: 10}}>ratio</Text>
-                                        <Text style={{color: Colors.text, fontSize: 10}}>{item.likes} : {item.dislikes}</Text>
-                                    </View>
-                                    <Image source={item.rating === -1 ? require('../assets/images/Disliked.png') : require('../assets/images/Dislike.png')} style={{width: 40, height: 40}} />
-                                </View>
-                                <TouchableOpacity onPress={() => data.deletePin(item.id)} style={{flex: 1}}>
-                                    <Image source={require('../assets/images/Union.png')}
-                                           style={{width: 12, height: 12}}/>
+                    {this.state.myPins.map(function (item, key) {
+                        return (
+                            <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                borderBottomWidth: 1,
+                                borderBottomColor: Colors.border2,
+                                height: 50,
+                                margin: 10,
+                                paddingBottom: 20
+                            }}
+                                  key={key}>
+                                <TouchableOpacity style={{flex: 1, marginRight: 5}}
+                                                  onPress={() => {
+                                                      data.props.navigation.navigate('Play', {
+                                                          coordinates: JSON.stringify([{
+                                                              id: item.id,
+                                                              title: item.title
+                                                          }]), mapCenter: JSON.stringify({lng: item.lng, lat: item.lat})
+                                                      })
+                                                  }}>
+                                    <Text style={{color: Colors.text, fontSize: 12}}>{item.title}</Text>
+                                    <Text style={{color: Colors.text, fontSize: 10}}>{item.subtitle}</Text>
+                                    <Text style={{color: Colors.text, fontSize: 10}}>{item.location}</Text>
                                 </TouchableOpacity>
+                                <View style={{
+                                    flex: 1,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    marginLeft: 5
+                                }}>
+                                    <View style={{flex: 5, flexDirection: 'row', justifyContent: 'space-around'}}>
+                                        <Image
+                                            source={item.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')}
+                                            style={{width: 40, height: 40}}/>
+                                        <View style={{alignItems: 'center'}}>
+                                            <Text style={{color: Colors.text, fontSize: 10}}>ratio</Text>
+                                            <Text style={{color: Colors.text, fontSize: 10}}>{item.likes} : {item.dislikes}</Text>
+                                        </View>
+                                        <Image
+                                            source={item.rating === -1 ? require('../assets/images/Disliked.png') : require('../assets/images/Dislike.png')}
+                                            style={{width: 40, height: 40}}/>
+                                    </View>
+                                    <TouchableOpacity onPress={() => data.deletePin(item.id)} style={{flex: 1, justifyContent: 'flex-end', alignItems: 'flex-start'}}>
+                                        <Image source={require('../assets/images/Union.png')} style={{width: 12, height: 12}}/>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
-                    );
+                        );
                     })}</ScrollView>);
+            } else {
+                content =
+                    (<View style={[styles.content, {flex: 1, justifyContent: 'center', alignItems: 'center', margin: 10, padding: 10}]}>
+                        <Image  source={require('../assets/images/no_pin.png')} />
+                    </View>);
+            }
         } else if (this.state.active === 'bookmark') {
             const data = this;
             if (this.state.bookmarks && this.state.bookmarks.length > 0) {
@@ -206,37 +248,43 @@ export default class SettingScreen extends React.Component {
                                 borderBottomColor: Colors.border2,
                                 height: 50,
                                 margin: 10,
-                                paddingBottom: 10}}
+                                paddingBottom: 20}}
                             key={key}>
-                            <TouchableOpacity style={{flex: 3, marginRight: 5}}
+                            <TouchableOpacity style={{flex: 1, marginRight: 5}}
                                               onPress={() => {data.props.navigation.navigate('Play', {coordinates: JSON.stringify([{id: item.id, title: item.title}]), mapCenter: JSON.stringify({lng: item.lng, lat: item.lat})})}}>
                                 <Text style={{color: Colors.text, fontSize: 12}}>{item.title}</Text>
                                 <Text style={{color: Colors.text, fontSize: 10}}>{item.subtitle}</Text>
                                 <Text style={{color: Colors.text, fontSize: 10}}>{item.location}</Text>
                             </TouchableOpacity>
                             <View style={{
-                                flex: 2,
+                                flex: 1,
                                 flexDirection: 'row',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
                                 marginLeft: 5
                             }}>
-                                <View style={{flex: 4, flexDirection: 'row', justifyContent: 'space-around'}}>
-                                    <Image source={item.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')} style={{width: 40, height: 40}} />
-                                    <View>
+                                <View style={{flex: 5, flexDirection: 'row', justifyContent: 'space-around'}}>
+                                    <Image source={item.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')}
+                                           style={{flex: 1, width: 40, height: 40}} />
+                                    <View style={{flex: 1, alignItems: 'center'}}>
                                         <Text style={{color: Colors.text, fontSize: 10}}>ratio</Text>
                                         <Text style={{color: Colors.text, fontSize: 10}}>{item.likes} : {item.dislikes}</Text>
                                     </View>
-                                    <Image source={item.rating === -1 ? require('../assets/images/Disliked.png') : require('../assets/images/Dislike.png')} style={{width: 40, height: 40}} />
+                                    <Image source={item.rating === -1 ? require('../assets/images/Disliked.png') : require('../assets/images/Dislike.png')}
+                                           style={{flex: 1, width: 40, height: 40}} />
                                 </View>
-                                <TouchableOpacity onPress={() => data.deleteBookmark(item.id)} style={{flex: 1}}>
-                                    <Image source={require('../assets/images/Icon.png')}
-                                           style={{width: 14, height: 18}}/>
+                                <TouchableOpacity onPress={() => data.deleteBookmark(item.id)} style={{flex: 1, justifyContent: 'flex-end', alignItems: 'flex-start'}}>
+                                    <Image source={require('../assets/images/Icon.png')}/>
                                 </TouchableOpacity>
                             </View>
                         </View>
                     );
                     })}</ScrollView>);
+            } else {
+                content =
+                    (<View style={[styles.content, {flex: 1, justifyContent: 'center', alignItems: 'center', margin: 10, padding: 10}]}>
+                        <Image  source={require('../assets/images/no_bookmark.png')} />
+                    </View>);
             }
         } else if (this.state.active === 'ad') {
                 content = (
@@ -252,7 +300,7 @@ export default class SettingScreen extends React.Component {
                             return (
                                 <View key={key} style={{flexDirection: 'row', margin: 10}}>
                                     <Image source={require('../assets/images/Path-40.png')}
-                                           style={{width: 6, height: 12, margin: 10}}/>
+                                           style={{width: 6, height: 12, marginHorizontal: 7, marginVertical: 5}}/>
                                     <TouchableOpacity onPress={() => {
                                         this.setState({webModal: true, webModalName: item.title, webModalUrl: item.url})
                                     }}>
@@ -300,17 +348,20 @@ export default class SettingScreen extends React.Component {
                         <WebView source={{uri: this.state.webModalUrl}} onLoadEnd={() => this.setState({webViewLoading: false})}/>
                     </View>
                 </Modal>
-                <View style={{flexDirection:'row', borderBottomColor: Colors.border2, borderBottomWidth: 1, padding: 15, margin: 10}}>
-                    <View style={{flex:2, alignItems: 'flex-end'}}>
-                        <Image source={require('../assets/images/Logo_Text.png')}
-                               style={{width: 129, height: 32}} />
+                {/*<View style={{flexDirection:'row', borderBottomColor: Colors.border2, borderBottomWidth: 1, margin: 10, padding: 10}}>*/}
+                <View style={{flexDirection:'row', justifyContent: 'center', alignItems: 'center', borderBottomColor: Colors.border2, borderBottomWidth: 1, margin: 10, padding: 10}}>
+                    {/*<View style={{flex: 1}}><Text></Text></View>*/}
+                    <View style={{flex:1, justifyContent: 'center', alignItems:'flex-start'}}></View>
+                    <View style={{flex: 2, justifyContent: 'center', alignItems:'center'}}>
+                        <Image source={require('../assets/images/Logo_Text.png')} style={{padding: 3}} />
                     </View>
-                    <View style={{flex: 1, alignItems: 'flex-end'}}>
-                        <TouchableOpacity onPress={() => {this.props.navigation.goBack();}} style={{padding:10}} >
-                            <Image source={require('../assets/images/Cancel.png')}
-                               style={{width: 12, height: 12}} />
-                        </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity style={{flex: 1, justifyContent: 'center', alignItems:'flex-end', paddingRight: 10}}
+                                      onPress={() => {this.props.navigation.goBack();}}>
+                        <Image
+                            source={require('../assets/images/Cancel.png')}
+                            style={{ width: 12, height: 12 }}
+                        />
+                    </TouchableOpacity>
                 </View>
                 <View style={{flexDirection:'row', justifyContent: 'space-around', margin: 10}}>
                     <View style={styles.itemContainer}>

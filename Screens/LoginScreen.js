@@ -24,7 +24,9 @@ export default class LoginScreen extends React.Component {
             emailValidationFailed: false,
             termsModal: false,
             webModal: false,
-            webViewLoading: true
+            webViewLoading: true,
+            timerActive: false,
+            timer: "",
         };
     }
 
@@ -34,6 +36,8 @@ export default class LoginScreen extends React.Component {
                 this.setState({email: email, termsModal: !agreement});
             });
         });
+
+        this.createTimerForLogin();
     }
 
     onChangeEmail(email) {
@@ -41,25 +45,74 @@ export default class LoginScreen extends React.Component {
         this.setState({email, emailValidationFailed});
     }
 
+    createTimerForLogin() {
+        AsyncStorage.getItem('next_login', (err, nextLogin) => {
+            let timer = setInterval(() => {
+                let remaining = Math.ceil((parseInt(nextLogin) - Date.now()) / 1000);
+                if (remaining >= 0) {
+                    let minutes = Math.floor(remaining/60);
+                    let seconds = remaining-(minutes*60);
+                    this.setState({timer: minutes+":"+(seconds < 10 ? "0"+seconds : seconds)});
+                } else {
+                    clearInterval(timer);
+                    this.setState({timerActive: false, timer: ""});
+                }
+            }, 1000);
+        });
+    }
+
+    loginAttempt() {
+
+        this.setState({sendRequest: true});
+
+        api.postRequest("User/SubmitEmail", JSON.stringify([{key: "Email", value: this.state.email}]))
+            .then((response) => {
+                this.setState({sendRequest: false});
+                if (response && (response.result === "success" || response.result === "duplicate")) {
+                    AsyncStorage.setItem('userId', response.userId.toString());
+                    AsyncStorage.setItem('email', this.state.email);
+                    AsyncStorage.setItem('email_request_count', 0);
+                    AsyncStorage.setItem('next_login', '');
+                    this.props.navigation.navigate('CheckPassword');
+                } else {
+                    Alert.alert('Whoops!', 'Looks something went wrong! Please try again.');
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+            });
+
+    }
+
     submitEmail = () => {
-        if (this.state.email.length < 6) {
+        if (!this.state.email || this.state.email.length < 6) {
             this.setState({emailValidationFailed: true});
         } else {
-            this.setState({sendRequest: true});
-            api.postRequest("User/SubmitEmail", JSON.stringify([{key: "Email", value: this.state.email}]))
-                .then((response) => {
-                    this.setState({sendRequest: false});
-                    if (response && (response.result === "success" || response.result === "duplicate")) {
-                        AsyncStorage.setItem('userId', response.userId.toString());
-                        AsyncStorage.setItem('email', this.state.email);
-                        this.props.navigation.navigate('CheckPassword');
+            AsyncStorage.getItem('email_request_count', (err, count) => {
+                console.log('email_request_count', count);
+                AsyncStorage.getItem('next_login', (err, nextLogin) => {
+                    console.log('next_login', nextLogin);
+                    if (parseInt(count) >= 3) {
+                        if (parseInt(nextLogin) > Date.now()) {
+                            this.setState({timerActive: true});
+                            Alert.alert('Whoops!', 'you have tried 3 times. please try ' + Math.ceil((parseInt(nextLogin) - Date.now()) / 60000) + ' minutes later');
+                        } else {
+                            AsyncStorage.setItem('email_request_count', '1').then(() => {});
+                            AsyncStorage.setItem('next_login', '').then(() => {});
+                            this.loginAttempt();
+                        }
                     } else {
-                        Alert.alert('Whoops!', 'Looks something went wrong! Please try again.');
+                        count = parseInt(count) > 0 ? parseInt(count) + 1 : 1;
+                        AsyncStorage.setItem('email_request_count', count.toString()).then(() => {});
+
+                        if (parseInt(count) === 3)
+                            AsyncStorage.setItem('next_login', (Date.now() + 3600000).toString()).then(() => {});
+
+                        this.loginAttempt();
+
                     }
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+                }).then(() => {});
+            }).then(() => {});
         }
     };
 
@@ -160,6 +213,10 @@ export default class LoginScreen extends React.Component {
                             </TouchableOpacity>
                             {this.state.sendRequest && <View style={{justifyContent: 'center', alignItems: 'center'}}>
                                 <Text style={{color: Colors.text}}>Please wait ...</Text>
+                            </View>}
+                            {this.state.timerActive && <View style={{justifyContent: 'center', alignItems: 'center', padding: 10, flexDirection: 'row'}}>
+                                <Text style={{color: Colors.text}}>next login attempt in </Text>
+                                <Text style={{color: Colors.danger}}>{this.state.timer}</Text>
                             </View>}
                         </View>
                     </View>

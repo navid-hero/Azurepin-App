@@ -28,6 +28,7 @@ import NetInfo from "@react-native-community/netinfo";
 import Torch from 'react-native-torch';
 import RNMockLocationDetector from 'react-native-mock-location-detector';
 import { ProcessingManager } from 'react-native-video-processing';
+import KeepAwake from 'react-native-keep-awake';
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
@@ -50,6 +51,7 @@ export default class DropPinScreen extends React.Component {
             imageToShow: "",
             recording: "start", // [start , recording , end]
             videoTime: 0,
+            videoDuration: 0,
             videoToShow: "",
             playBack: true,
             refreshIntervalId: 0,
@@ -60,7 +62,7 @@ export default class DropPinScreen extends React.Component {
             recordSecs: "",
             recordTime: "",
 
-            audioPlayback: true,
+            audioPlayback: false,
             currentTime: 0.0,
             stoppedRecording: false,
             finished: false,
@@ -69,6 +71,8 @@ export default class DropPinScreen extends React.Component {
         };
 
         this.months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        this.animate = this.animate.bind(this);
     }
 
     componentDidMount() {
@@ -83,6 +87,7 @@ export default class DropPinScreen extends React.Component {
         });
 
         AudioRecorder.requestAuthorization().then((isAuthorised) => {
+            console.log("isAuthorised", isAuthorised);
             this.setState({ hasPermission: isAuthorised });
 
             if (!isAuthorised) return;
@@ -115,6 +120,20 @@ export default class DropPinScreen extends React.Component {
                     this.requestPermissions(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, 'Access Microphone', 'Azurepin needs access to your microphone')
                         .then((response) => {console.log(response)});
             });
+
+        Geolocation.getCurrentPosition(
+            (position) => {
+                //
+            },
+            (error) => {
+                if (error.code === 5) { // Location settings are not satisfied.
+                    Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
+                    console.log("no location permission");
+                    this.props.navigation.goBack();
+                }
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        );
 
         RNMockLocationDetector.checkMockLocationProvider(
             "Mock Location Detected",
@@ -160,6 +179,7 @@ export default class DropPinScreen extends React.Component {
     }
 
     handleBackButtonPressAndroid = () => {
+        this.onExit(true);
         return this.props.navigation.isFocused();
     };
 
@@ -216,30 +236,38 @@ export default class DropPinScreen extends React.Component {
         let startInt = 0, endInt = 60, videoTime = 0, start = "", end = "";
         let data = this;
         let refreshIntervalId = setInterval(function () {
-            if (endInt > 10)
+            if (endInt > 10) {
                 end = "0:" + (--endInt);
-            else if (endInt > 0)
+            } else if (endInt > 0) {
                 end = "0:0" + (--endInt);
-            else {
+            } else if (endInt === 0) {
+                end = "0:00" + (endInt--);
+            } else {
                 clearInterval(refreshIntervalId);
             }
 
-            if (startInt === 59)
+            if (startInt === 60)
                 start = "1:00";
             else if (startInt > 8)
                 start = "0:" + (++startInt);
             else
                 start = "0:0" + (++startInt);
 
-            videoTime += 0.016;
-            if (videoTime < 1)
-                data.setState({ videoTime, refreshIntervalId, start, end });
-
+            videoTime += 0.0167;
+            if (videoTime <= 1.0187) {
+                data.setState({videoTime, refreshIntervalId, start, end});
+            } else { // stop recording
+                if (data.state.audio) {
+                    console.log("trying to stop recording");
+                    data._stop();
+                } else if (data.state.video) { // video
+                    //
+                }
+            }
         }, 1000);
     }
 
     setDateTimeLocation() {
-        // let location = "Location";
         Geolocation.getCurrentPosition(
             (position) => {
                 let lng = position.coords.longitude;
@@ -251,114 +279,77 @@ export default class DropPinScreen extends React.Component {
                         api.getLocationName(lat, lng).then(response => {
                             let country = response[response.length-1].text;
                             let city = response[0].text;
-                            this.setState({location: country + ", "+ city, latitude: lat, longitude: lng});
+                            let now = new Date(Date.now());
+                            let date = this.months[now.getDate() + ", " + now.getMonth()] + " " + now.getFullYear();
+
+                            let hour = now.getHours().toString().length < 2 ? "0"+now.getHours() : now.getHours();
+                            let minutes = now.getMinutes().toString().length < 2 ? "0"+now.getMinutes() : now.getMinutes();
+                            let time = hour + ":" + minutes;
+
+                            this.setState({location: country + ", "+ city, latitude: lat, longitude: lng, date: date, time: time});
                         });
                     }
                 });
             },
             (error) => {
                 // console.log(error.code, error.message);
-                if (error.code === 5) // Location settings are not satisfied.
+                if (error.code === 5) { // Location settings are not satisfied.
                     Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
+                }
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
         );
-        // console.log(location);
-
-        let now = new Date(Date.now());
-        let date = this.months[now.getMonth()] + " " + now.getDate() + ", " + now.getFullYear();
-
-        let hour = now.getHours().toString().length < 2 ? "0"+now.getHours() : now.getHours();
-        let minutes = now.getMinutes().toString().length < 2 ? "0"+now.getMinutes() : now.getMinutes();
-        let time = hour + ":" + minutes;
-        this.setState({date, time});
-    }
-
-    cropVideo() {
-        console.log("start cropping...");
-        const source = this.state.videoToShow;
-        ProcessingManager.getVideoInfo(source)
-            .then(({ duration, size, frameRate, bitrate }) => {
-                console.log("before", duration, size, frameRate, bitrate, "1");
-                const cropOptions = {
-                    cropOffsetX: 0,
-                    cropOffsetY: 140,
-                    cropWidth: 480,
-                    cropHeight: 480
-                };
-                ProcessingManager.crop(source, cropOptions).then((result) => {
-                    console.log("finished cropping", result);
-                    this.setState({videoToShow: result}, () => {
-                        ProcessingManager.getVideoInfo(result).then(({ duration, size, frameRate, bitrate }) => {
-                            console.log("after", duration, size, frameRate, bitrate, "2");
-                        });
-                    })
-                });
-            });
     }
 
     dropNewPin(type, isDraft="0") {
         NetInfo.fetch().then(state => {
             if (state.isConnected) {
-                let currentTimestamp = Date.now();
-
-                const source = this.state.videoToShow;
-                ProcessingManager.getVideoInfo(source)
-                    .then(({ duration, size, frameRate, bitrate }) => {
-                        const cropOptions = {
-                            cropOffsetX: 0,
-                            cropOffsetY: 120,
-                            cropWidth: 480,
-                            cropHeight: 480
-                        };
-                        ProcessingManager.crop(source, cropOptions).then((result) => {
-                            this.setState({videoToShow: result}, () => {
-                                AsyncStorage.getItem('userId', (err, userId) => {
-                                    let fileName = userId.toString() + "_" + currentTimestamp.toString() + (type === "video" ? ".mp4" : ".aac");
-                                    console.log("start uploading...");
-                                    ToastAndroid.show("Your recording is uploading in background ...", ToastAndroid.SHORT);
-                                    api.postRequest("Pin/UploadMedia", JSON.stringify([
-                                        {
-                                            key: "Pin", value: {
-                                                name: fileName,
-                                                type: type === "video" ? "video/mp4" : "audio/aac",
-                                                uri: type === "video" ? this.state.videoToShow : 'file://'+this.state.audioPath
-                                            }
-                                        },
-                                        {key: "UserId", value: userId}
-                                    ])).then((responseJson) => {
-                                        console.log(responseJson);
-                                        if (responseJson && responseJson.result === "success") {
-                                            api.postRequest("Pin/DropNewPin", JSON.stringify([
-                                                {key: "UserId", value: userId.toString()},
-                                                {key: "Title", value: this.state.title.toString()},
-                                                {key: "Timestamp", value: currentTimestamp.toString()},
-                                                {key: "Latitude", value: this.state.latitude.toString()},
-                                                {key: "Longitude", value: this.state.longitude.toString()},
-                                                {key: "Location", value: this.state.location.toString()},
-                                                {key: "Duration", value: type === "video" ? duration : this.state.currentTime},
-                                                {key: "Type", value: type === "video" ? "2" : "1"},
-                                                {key: "FileId", value: responseJson.fileId.toString()},
-                                                {key: "IsDraft", value: isDraft}
-                                            ])).then((responseJson) => {
-                                                console.log(responseJson);
-                                                if (responseJson && responseJson.result === "success") {
-                                                    let message = isDraft === "0" ? 'Your pin dropped successfully' : 'Your recording has been drafted!';
-                                                    ToastAndroid.show(message, ToastAndroid.LONG);
-                                                    if (isDraft === "1") this.putDraftInStorage(responseJson.pinId);
-                                                } else {
-                                                    ToastAndroid.show('Unable to communicate with server', ToastAndroid.LONG);
-                                                }
-                                            });
-                                        } else {
-                                            ToastAndroid.show('Unable to upload file', ToastAndroid.LONG);
-                                        }
-                                    });
-                                    setTimeout(() => {this.props.navigation.pop();}, 1000);
-                                });
-                            })
-                        });
+                AsyncStorage.getItem('userId', (err, userId) => {
+                    let currentTimestamp = Date.now();
+                    let fileName = userId.toString() + "_" + currentTimestamp.toString() + (type === "video" ? ".mp4" : ".aac");
+                    console.log("start uploading...");
+                    ToastAndroid.show("Your recording is uploading in background ...", ToastAndroid.SHORT);
+                    api.postRequest("Pin/UploadMedia", JSON.stringify([
+                        {
+                            key: "Pin", value: {
+                                name: fileName,
+                                type: type === "video" ? "video/mp4" : "audio/aac",
+                                uri: type === "video" ? this.state.videoToShow : 'file://' + this.state.audioPath
+                            }
+                        },
+                        {key: "UserId", value: userId}
+                    ])).then((responseJson) => {
+                        console.log("upload draft media", responseJson);
+                        if (responseJson && responseJson.result === "success") {
+                            api.postRequest("Pin/DropNewPin", JSON.stringify([
+                                {key: "UserId", value: userId.toString()},
+                                {key: "Title", value: this.state.title.toString()},
+                                {key: "Timestamp", value: currentTimestamp.toString()},
+                                {key: "Latitude", value: this.state.latitude.toString()},
+                                {key: "Longitude", value: this.state.longitude.toString()},
+                                {key: "Location", value: this.state.location.toString()},
+                                {key: "Duration", value: type === "video" ? this.state.videoDuration : this.state.currentTime},
+                                {key: "Type", value: type === "video" ? "2" : "1"},
+                                {key: "FileId", value: responseJson.fileId.toString()},
+                                {key: "IsDraft", value: isDraft}
+                            ])).then((responseJson) => {
+                                console.log(responseJson);
+                                if (responseJson && responseJson.result === "success") {
+                                    let message = isDraft === "0" ? 'Your pin dropped successfully' : 'Your recording has been drafted!';
+                                    ToastAndroid.show(message, ToastAndroid.LONG);
+                                    if (isDraft === "1") this.putDraftInStorage(responseJson.pinId);
+                                } else {
+                                    ToastAndroid.show('Unable to communicate with server', ToastAndroid.LONG);
+                                }
+                            });
+                        } else {
+                            ToastAndroid.show('Unable to upload file', ToastAndroid.LONG);
+                        }
                     });
+                    setTimeout(() => {
+                        this.props.navigation.pop();
+                    }, 1000);
+                });
             } else {
                 Alert.alert(
                     'No Internet Connection',
@@ -374,6 +365,24 @@ export default class DropPinScreen extends React.Component {
         });
     }
 
+    cropVideo(isDraft="0") {
+        const source = this.state.videoToShow;
+        ProcessingManager.getVideoInfo(source)
+            .then(({ duration, size, frameRate, bitrate }) => {
+                const cropOptions = {
+                    cropOffsetX: 0,
+                    cropOffsetY: 120,
+                    cropWidth: 480,
+                    cropHeight: 480
+                };
+                ProcessingManager.crop(source, cropOptions).then((result) => {
+                    this.setState({videoToShow: result, videoDuration: duration}, () => {
+                        this.dropNewPin("video", isDraft)
+                    })
+                });
+            });
+    }
+
     recordMedia = async () => {
         if (this.state.video) {
             if (this.state.recording === "start") { // start recording
@@ -382,18 +391,19 @@ export default class DropPinScreen extends React.Component {
                 this.animate();
                 const options = {
                     quality: RNCamera.Constants.VideoQuality['480p'],
-                    maxDuration: 59,
+                    maxDuration: 60,
                     videoBitrate: 2*1024*1024
                 };
                 const data = await this.camera.recordAsync(options);
                 this.onRecordVideo(data.uri);
+
             } else if (this.state.recording === "recording") { // stop recording
                 this.setState({recording: "end"});
                 const data = await this.camera.stopRecording();
             } else {
                 if (this.state.title.length > 0) {
-                    this.dropNewPin("video");
-                    // this.cropVideo();
+                    // this.dropNewPin("video");
+                    this.cropVideo();
                 } else {
                     //
                 }
@@ -402,7 +412,6 @@ export default class DropPinScreen extends React.Component {
             if (this.state.recording === "start") { // start recording
                 this.setDateTimeLocation();
                 this._record();
-
             } else if (this.state.recording === "recording") { // stop recording
                 this._stop();
                 clearInterval(this.state.refreshIntervalId);
@@ -420,18 +429,17 @@ export default class DropPinScreen extends React.Component {
     onRecordVideo = (video) => {
         console.log(video);
         clearInterval(this.state.refreshIntervalId);
-        this.setState({videoToShow: video});
+        this.setState({videoToShow: video, recording: "end"});
     };
 
     togglePlay = () => {
         if (this.state.video) {
             this.setState({playBack: !this.state.playBack});
         } else if (this.state.audio) {
-            // console.log(this.state.audioPlayback);
             if (this.state.audioPlayback) {
-                this._play();
-            } else {
                 this._pause();
+            } else {
+                this._play();
             }
         }
     };
@@ -561,8 +569,9 @@ export default class DropPinScreen extends React.Component {
 
     }
 
-    onExit = () => {
-        if (this.state.videoToShow.length > 0 || this.state.finished) {
+    onExit = (hardwareBack=false) => {
+        if (this.state.videoToShow.length > 0 || this.state.finished || this.state.recording === "recording") {
+            if (this.state.recording === "recording") this.recordMedia();
             Alert.alert(
                 'Discard Recording?',
                 'If you go back now, you will \n' +
@@ -576,7 +585,8 @@ export default class DropPinScreen extends React.Component {
                 {cancelable: false},
             );
         } else {
-            this.props.navigation.goBack();
+            if(!hardwareBack)
+                this.props.navigation.goBack();
         }
     };
 
@@ -600,13 +610,12 @@ export default class DropPinScreen extends React.Component {
         }
     }
 
-    async _play() {
+    async _play() {/*
         if (this.state.recording === "recording") {
             await this._stop();
         }
 
         this.setState({audioPlayback: false}, () => {
-            // console.log("start play", this.state.audioPlayback);
             setTimeout(() => {
                 var sound = new Sound(this.state.audioPath, '', (error) => {
                     if (error) {
@@ -626,6 +635,20 @@ export default class DropPinScreen extends React.Component {
                     });
                 }, 100);
             }, 100);
+        });*/
+        await audioRecorderPlayer.startPlayer(this.state.audioPath).then(() => this.setState({audioPlayback: true}));
+        audioRecorderPlayer.addPlayBackListener((e) => {
+            if (e.current_position === e.duration) {
+                audioRecorderPlayer.stopPlayer().then(() => this.setState({audioPlayback: false}));
+                audioRecorderPlayer.removePlayBackListener();
+                this.setState({audioPlayback: false});
+            }
+            // this.setState({
+            //     currentPositionSec: e.current_position,
+            //     currentDurationSec: e.duration,
+            //     playTime: audioRecorderPlayer.mmssss(Math.floor(e.current_position)),
+            //     duration: audioRecorderPlayer.mmssss(Math.floor(e.duration)),
+            // });
         });
     }
 
@@ -644,8 +667,9 @@ export default class DropPinScreen extends React.Component {
                     console.log("res pause", res);
                 });
             }, 100);
-        });
-    */}
+        });*/
+        await audioRecorderPlayer.pausePlayer().then(() => this.setState({audioPlayback: false}));
+    }
 
     async _record() {
         if (this.state.recording !== "start") {
@@ -681,6 +705,7 @@ export default class DropPinScreen extends React.Component {
         const { type } = this.state;
         return (
             <View style={{flex:1}}>
+                <KeepAwake />
                 <Modal
                     animationType="slide"
                     transparent={true}
@@ -692,7 +717,7 @@ export default class DropPinScreen extends React.Component {
                 >
                     <View style={styles.containerOne}>
                         <View style={styles.containerTwo}>
-                            <Text style={styles.modalTitle}>Draft</Text>
+                            <Text style={styles.modalTitle}>Drafts</Text>
                             <View style={styles.containerThree}>
                                 {this.state.drafts && this.state.drafts.length > 0 ? this.state.drafts.map((item, key) => {
                                     return (
@@ -718,28 +743,29 @@ export default class DropPinScreen extends React.Component {
                         </View>
                     </View>
                 </Modal>
-                <View style={{flexDirection:'row', justifyContent: 'space-between', borderBottomColor: '#E3E3E3', borderBottomWidth: 1, margin: 10, paddingBottom: 10}}>
-                    <TouchableOpacity onPress={() => {this.setModalVisible(true);}}>
+
+                <View style={{flexDirection:'row', justifyContent: 'center', alignItems: 'center', borderBottomColor: Colors.border2, borderBottomWidth: 1, margin: 10, padding: 10}}>
+                    <TouchableOpacity onPress={() => {this.setModalVisible(true);}}
+                                      style={{flex:1, justifyContent: 'center', alignItems:'flex-start'}} >
                         <Image source={require('../assets/images/Draft.png')}
                                style={{width: 36, height: 36}} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => {this.props.navigation.navigate('Setting');}}>
-                        <Image source={require('../assets/images/Logo_Text.png')}
-                               style={{width: 129, height: 32}} />
+                    <TouchableOpacity style={{flex: 2, justifyContent: 'center', alignItems:'center'}}
+                                      onPress={() => {this.props.navigation.navigate('Setting');}}>
+                        <Image source={require('../assets/images/Logo_Text.png')} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => {this.onExit();}} style={{padding: 10}}>
+                    <TouchableOpacity onPress={() => {this.onExit();}}
+                                      style={{flex: 1, justifyContent: 'center', alignItems:'flex-end', paddingRight: 10}}>
                         <Image source={require('../assets/images/Cancel.png')}
                                style={{width: 12, height: 12}} />
                     </TouchableOpacity>
                 </View>
                 <View style={{margin: 10, marginTop: 5, padding: 5}}>
                     <View>
-                        <TextInput placeholder="Title" value={this.state.title} onChangeText={(text) => {this.changeTitle(text)}} style={[styles.titleTextInput, this.titleStyle()]} />
+                        <TextInput placeholder="Title" value={this.state.title} maxLength={25} onChangeText={(text) => {this.changeTitle(text)}} style={[styles.titleTextInput, this.titleStyle()]} />
                         <Text style={{margin: 5, color: '#666666', fontSize: 11}}>
-                            <Text>{this.state.date}</Text>
-                            <Text> / </Text>
-                            <Text>{this.state.time}</Text>
-                            <Text> / </Text>
+                            <Text>{this.state.time}</Text><Text>/ </Text>
+                            <Text>{this.state.date}</Text><Text>/ </Text>
                             <Text>{this.state.location}</Text>
                         </Text>
                     </View>
@@ -749,16 +775,16 @@ export default class DropPinScreen extends React.Component {
                     <View style={[{margin: 3, height: 330}, this.state.audio && {justifyContent: 'center', alignItems: 'center', marginTop: 5}]}>
                         {this.state.audio ?
                             <View style={{flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, width: '100%', justifyContent: 'center', alignItems: 'center'}}>
-                                <Image source={require('../assets/images/Audio.png')}/>
-                                {this.state.finished &&
-                                <TouchableOpacity style={[styles.playContent, {top: '35%', left: '41%'}]}
+                                {this.state.finished ?
+                                <TouchableOpacity /*style={[styles.playContent, {top: '35%', left: '41%'}]}*/
                                                   onPress={() => {
                                                       this.togglePlay()
                                                   }}>
-                                    <Image
-                                        source={this.state.audioPlayback ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
-                                        style={{height: 60, width: 60}}/>
-                                </TouchableOpacity>}
+                                    {/*<Image*/}
+                                        {/*source={this.state.audioPlayback ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}*/}
+                                        {/*style={{height: 60, width: 60}}/>*/}
+                                    <Image source={this.state.audioPlayback ? require('../assets/images/Audio-Pause.png') : require('../assets/images/Audio-Play.png')} />
+                                </TouchableOpacity> : <Image source={require('../assets/images/Audio.png')}/>}
                             </View>
                             :
                             this.state.videoToShow.length > 0 ?
@@ -809,19 +835,19 @@ export default class DropPinScreen extends React.Component {
                     </View>
 
                     <View pointerEvents={this.state.recording !== "start" ? "none" : "auto"} style={[styles.actionsContainer, {opacity: this.state.recording === "start" ? 1 : 0.7}]}>
-                        <TouchableOpacity disabled={!this.state.video} onPress={() => {this.toggleTorch()}}>
+                        {this.state.video ? <TouchableOpacity disabled={!this.state.video} onPress={() => {this.toggleTorch()}} style={{flex: 1, justifyContent: 'center'}}>
                             <Image source={this.state.video ? require('../assets/images/Path_11.png') : require('../assets/images/Path_12.png')}
                                    style={{width: 11, height: 23}}/>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => {this.setState({video: true, audio: false});}}>
+                        </TouchableOpacity> : <Text style={{flex: 1}}></Text>}
+                        <TouchableOpacity onPress={() => {this.setState({video: true, audio: false});}} style={{flex: 1}}>
                             <Text style={this.state.video ? styles.active : styles.inactive}>Video</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => {this.setState({video: false, audio: true, isTorchOn: false})}}>
+                        <TouchableOpacity onPress={() => {this.setState({video: false, audio: true, isTorchOn: false})}} style={{flex: 1, alignItems: 'flex-end'}}>
                             <Text style={this.state.audio ? styles.active : styles.inactive}>Audio</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => this.flipCamera()}>
+                        {this.state.video ? <TouchableOpacity onPress={() => this.flipCamera()} style={{flex: 1, alignItems: 'flex-end', justifyContent: 'center'}}>
                             <Image source={require('../assets/images/Reverse-Camera-Icon.png')} style={{width: 21, height: 17}}/>
-                        </TouchableOpacity>
+                        </TouchableOpacity> : <Text style={{flex: 1}}></Text>}
                     </View>
                     <View style={{padding: 10}}>
                         {/*<View style={styles.progressBar}>*/}
@@ -945,7 +971,8 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         backgroundColor: '#DCDCDC',
         marginTop: 5,
-        justifyContent: 'space-between',
+        // justifyContent: 'space-between',
+        justifyContent: 'center',
         padding: 10
     },
 });

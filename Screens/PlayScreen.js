@@ -8,7 +8,8 @@ import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import ViewPager from '@react-native-community/viewpager';
 import { Colors } from "../Components/Colors";
 import { Constants } from "../Components/Constants";
-import RNFetchBlob from 'rn-fetch-blob'
+import RNFetchBlob from 'rn-fetch-blob';
+import KeepAwake from 'react-native-keep-awake';
 
 const api = new Api();
 const audioRecorderPlayer = new AudioRecorderPlayer();
@@ -35,6 +36,7 @@ class PlayScreen extends React.Component {
             location: "",
             lat: "",
             lng: "",
+            hideToggleButton: true,
             playBack: false,
             paused: false,
             currentPositionSec: "",
@@ -42,15 +44,16 @@ class PlayScreen extends React.Component {
             playTime: "",
             duration: "",
             hasLiked: false,
-            optionArray: ['Report', 'Bookmark', 'Copy Link', 'Save', 'Settings', 'Cancel'],
+            optionArray: ['Settings', 'Report', 'Bookmark', 'Copy Link', 'Save', 'Cancel'],
             cancelButtonIndex: 5,
-            destructiveButtonIndex: 0,
+            destructiveButtonIndex: 1,
             videoLoading: false,
             start: "",
             end: "",
             currentTime: ""
         };
     }
+
     componentDidMount() {
         let coordinates = JSON.parse(this.props.navigation.getParam('coordinates'));
         for(let i=0; i<coordinates.length; i++) {
@@ -71,9 +74,9 @@ class PlayScreen extends React.Component {
 
     resetActionSheet() {
         this.setState({
-            optionArray: ['Report', 'Bookmark', 'Copy Link', 'Save', 'Settings', 'Cancel'],
-            cancelButtonIndex: 4,
-            destructiveButtonIndex: 0
+            optionArray: ['Settings', 'Report', 'Bookmark', 'Copy Link', 'Save', 'Cancel'],
+            cancelButtonIndex: 5,
+            destructiveButtonIndex: 1
         });
     }
 
@@ -166,10 +169,18 @@ class PlayScreen extends React.Component {
 
     async togglePlay() {
         if (this.state.video) {
-            this.setState({paused: !this.state.paused});
+            this.setState({paused: !this.state.paused}, () => {
+                if (this.state.paused) {
+                    this.setState({hideToggleButton: false});
+                } else {
+                    setTimeout(() => {
+                        this.setState({hideToggleButton: true});
+                    }, 1500);
+                }
+            });
+
         } else if (this.state.audio) {
             if (!this.state.playBack) {
-                console.log("play", this.state.playBack);
                 await audioRecorderPlayer.startPlayer(this.state.audio).then(() => this.setState({playBack: true}));
                 audioRecorderPlayer.addPlayBackListener((e) => {
                     if (e.current_position === e.duration) {
@@ -185,7 +196,6 @@ class PlayScreen extends React.Component {
                     });
                 });
             } else {
-                console.log("pause", this.state.playBack);
                 await audioRecorderPlayer.pausePlayer().then(() => this.setState({playBack: false}));
             }
         } else {
@@ -248,6 +258,7 @@ class PlayScreen extends React.Component {
         }, () => {
             if (!this.state.coordinates[index].downloaded) {
                 AsyncStorage.getItem('userId', (err, userId) => {
+                    console.log("user id", userId);
                     const { coordinates } = this.state;
                     if (coordinates && coordinates.length > 0) {
                         api.postRequest("Pin/GetPin", JSON.stringify([
@@ -272,8 +283,8 @@ class PlayScreen extends React.Component {
                                     // set date time location
                                     this.setState({
                                         title: coordinates[index].title,
-                                        date: month + " " + date + " " + year + " / ",
-                                        time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
+                                        date: date + " " + month + " " + year + "/ ",
+                                        time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + "/ ",
                                         location: location,
                                         duration: responseJson.duration,
                                         audio: audio,
@@ -293,8 +304,8 @@ class PlayScreen extends React.Component {
                                             title: coordinates[index].title,
                                             lng: coordinates[index].lng,
                                             lat: coordinates[index].lat,
-                                            date: month + " " + date + " " + year + " / ",
-                                            time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
+                                            date: date + " " + month + " " + year + "/ ",
+                                            time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + "/ ",
                                             location: location,
                                             uri: url,
                                             audio: audio,
@@ -362,7 +373,8 @@ class PlayScreen extends React.Component {
     render() {
         return (
             <View style={{flex: 1}}>
-                <View style={{flexDirection:'row', justifyContent: 'center', alignItems: 'center', borderBottomColor: '#E3E3E3', borderBottomWidth: 1, margin: 10, padding: 10}}>
+                <KeepAwake />
+                <View style={{flexDirection:'row', justifyContent: 'center', alignItems: 'center', borderBottomColor: Colors.border2, borderBottomWidth: 1, margin: 10, padding: 10}}>
                     <ActionSheet
                         ref={o => (this.ActionSheet = o)}
                         options={this.state.optionArray}
@@ -383,14 +395,13 @@ class PlayScreen extends React.Component {
                         />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={{flex: 2, justifyContent: 'center', alignItems:'center'}} onPress={() => {this.beforeNavigate(); this.props.navigation.navigate('Setting');}}>
-                        <Image
-                            source={require('../assets/images/Logo_Text.png')}
-                            style={{ width: 129, height: 32 }}
-                        />
+                    <TouchableOpacity style={{flex: 2, justifyContent: 'center', alignItems:'center'}}
+                                      onPress={() => {this.beforeNavigate(); this.props.navigation.navigate('Setting');}}>
+                        <Image source={require('../assets/images/Logo_Text.png')} style={{padding: 3}} />
                     </TouchableOpacity>
 
-                    <TouchableOpacity onPress={() => {this.props.navigation.pop();}} style={{flex: 1, justifyContent: 'center', alignItems:'flex-end', paddingRight: 15}}>
+                    <TouchableOpacity style={{flex: 1, justifyContent: 'center', alignItems:'flex-end', paddingRight: 10}}
+                                      onPress={() => {this.props.navigation.pop();}}>
                         <Image
                             source={require('../assets/images/Cancel.png')}
                             style={{ width: 12, height: 12 }}
@@ -403,11 +414,11 @@ class PlayScreen extends React.Component {
                         <ViewPager style={{flex: 5}} initialPage={0}
                                    onPageSelected={(e) => this.onPageSelected(e)}>
                             {this.state.coordinates.map((item, key) => {
-                                return (<View key={key}>
+                                return (<View key={key} style={{backgroundColor: "#f9f9f9"}}>
                                     <View style={{flex:1, flexDirection: 'row', padding: 15}}>
                                         <View style={{flex: 6}}>
                                             <Text style={styles.titleText}>{this.state.title}</Text>
-                                            <Text style={styles.subtitleText}>{this.state.date}{this.state.time}{this.state.location}</Text>
+                                            <Text style={styles.subtitleText}>{this.state.time}{this.state.date}{this.state.location}</Text>
                                         </View>
                                         <View style={{flex: 1, alignItems: 'flex-end'}}>
                                             <TouchableOpacity onPress={() => {this.beforeNavigate(); this.props.navigation.navigate('Detail', {lat: this.state.lat, lng: this.state.lng});}}>
@@ -447,7 +458,8 @@ class PlayScreen extends React.Component {
                                                     />
                                                     <TouchableOpacity style={[styles.playContent, {top: '40%'}]} onPress={() => {this.togglePlay()}}>
                                                         {this.state.videoLoading ? <ActivityIndicator size="large" color={Colors.primary}/> :
-                                                            <Image source={this.state.paused ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')} />}
+                                                            <Image source={this.state.paused ? require('../assets/images/Play-Button.png') : require('../assets/images/Pasue-Button.png')}
+                                                                   style={this.state.hideToggleButton ? {display: 'none'} : {display: 'flex'}}/>}
                                                     </TouchableOpacity>
                                                 </View>
                                             }
@@ -495,15 +507,15 @@ class PlayScreen extends React.Component {
                     </View>
                 :
                 <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-                    <Text style={{color: Colors.text, textAlign: 'center', padding: 10}}>No playlist available for this area at the moment!</Text>
+                    <Image  source={require('../assets/images/Nothing_to_play.png')} />
                 </View>}
-                <View style={{alignItems: 'center'}}>
+                {this.state.coordinates.length > 0 && <View style={{alignItems: 'center'}}>
                     <TouchableOpacity style={{position: 'absolute', bottom: 0, padding: 10}}
                                       onPress={() => {this.beforeNavigate(); this.props.navigation.navigate('PlayHalf', {mapCenter: this.props.navigation.getParam('mapCenter'), zoomLevel:  this.props.navigation.getParam('zoomLevel'), coordinates: JSON.stringify(this.state.coordinates)});}}>
                         <Image source={require('../assets/images/Rectangle-64.png')}
                                style={{ height: 10, width: 150, borderRadius: 5 }} />
                     </TouchableOpacity>
-                </View>
+                </View>}
             </View>
 
         );

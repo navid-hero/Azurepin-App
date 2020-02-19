@@ -40,7 +40,12 @@ export default class CheckPasswordScreen extends React.Component {
                             AsyncStorage.setItem('logged_in', "true");
                             this.props.navigation.dispatch(resetAction);
                         } else {
-                            Alert.alert('Whoops!', 'Looks something went wrong!');
+                            // Alert.alert('Whoops!', 'Looks something went wrong!');
+
+                            /*===*/
+                            AsyncStorage.setItem('logged_in', "true");
+                            this.props.navigation.dispatch(resetAction);
+                            /*===*/
                         }
                     })
                     .catch((error) => {

@@ -20,6 +20,7 @@ import ViewPager from '@react-native-community/viewpager';
 import RNFetchBlob from "rn-fetch-blob";
 import Video from "react-native-video";
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import KeepAwake from 'react-native-keep-awake';
 import {Colors} from "../Components/Colors";
 import {Constants} from "../Components/Constants";
 
@@ -71,7 +72,8 @@ export default class PlayHalfScreen extends React.Component {
             playTime: "",
             duration: "",
             hasLiked: false,
-            videoLoading: false
+            videoLoading: false,
+            videoPaused: false,
         };
 
         this.finishRenderMap = this.finishRenderMap.bind(this);
@@ -92,6 +94,10 @@ export default class PlayHalfScreen extends React.Component {
             if (!this.requestLocationPermission())
                 Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
         });
+    }
+
+    componentWillUnmount() {
+        this.beforeNavigate();
     }
 
     async requestLocationPermission() {
@@ -205,6 +211,7 @@ export default class PlayHalfScreen extends React.Component {
                 fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/' + query + '.json?access_token=' + accessToken)
                     .then((response) => response.json())
                     .then((responseJson) => {
+                        console.log("search results", responseJson);
                         this.setState({
                             searchResult: responseJson.features
                         }, function () {
@@ -222,13 +229,13 @@ export default class PlayHalfScreen extends React.Component {
         });
     }
 
-    setCenterToResultItem(lng, lat) {
+    setCenterToResultItem(id, lng, lat) {
         this.setState({
             search: false,
             searchQuery: "",
             searchResult: [],
             mapCenter: {lng: lng, lat: lat},
-            mapZoomLevel: 11
+            mapZoomLevel: id.startsWith("country") ? 5 : 10
         });
     }
 
@@ -268,6 +275,7 @@ export default class PlayHalfScreen extends React.Component {
             alert(error.message);
         }
     };
+
     onPageSelected = (e) => {
         let index = e === 0 ? e : e.nativeEvent.position;
 
@@ -317,8 +325,8 @@ export default class PlayHalfScreen extends React.Component {
                                     // set date time location
                                     this.setState({
                                         title: coordinates[index].title,
-                                        date: month + " " + date + " " + year + " / ",
-                                        time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
+                                        date: date + " " + month + " " + year + "/ ",
+                                        time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + "/ ",
                                         location: location,
                                         audio: audio,
                                         video: video,
@@ -337,8 +345,8 @@ export default class PlayHalfScreen extends React.Component {
                                             title: coordinates[index].title,
                                             lng: coordinates[index].lng,
                                             lat: coordinates[index].lat,
-                                            date: month + " " + date + " " + year + " / ",
-                                            time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + " / ",
+                                            date: date + " " + month + " " + year + "/ ",
+                                            time: (hour.toString().length < 2 ? "0"+hour : hour) + ":" + (minute.toString().length< 2 ? "0"+minute : minute) + "/ ",
                                             location: location,
                                             uri: url,
                                             audio: audio,
@@ -361,11 +369,11 @@ export default class PlayHalfScreen extends React.Component {
                                                             console.log('The file saved to ', res.path());
                                                             coordinates[index].fileDownloaded = true;
                                                             video = Platform.OS === 'android' ? ('file://' + res.path()) : res.path();
-                                                            this.setState({video: video}, () => {
+                                                            // this.setState({video: video}, () => {
                                                                 coordinates[index].details.audio = "";
                                                                 coordinates[index].details.video = video;
                                                                 coordinates[index].fileDownloaded = true;
-                                                            });
+                                                            // });
                                                         });
                                                     });
                                             });
@@ -410,6 +418,28 @@ export default class PlayHalfScreen extends React.Component {
         });
     }
 
+    async _pauseAudio() {
+        await audioRecorderPlayer.pausePlayer().then(() => this.setState({playBack: false}));
+    }
+
+    async beforeNavigate() {
+        if (this.state.video)
+            this.setState({videoPaused: true});
+        else if (this.state.audio)
+            if (this.state.playBack)
+                this._pauseAudio();
+    }
+
+    async customNavigatation() {
+        if (this.state.video)
+            this.setState({videoPaused: true});
+        else if (this.state.audio)
+            if (this.state.playBack)
+                this._pauseAudio();
+
+
+    }
+
     ratingCompleted(rating) {
         console.log("rating", rating);
         AsyncStorage.getItem('userId', (err, userId) => {
@@ -427,43 +457,55 @@ export default class PlayHalfScreen extends React.Component {
     }
 
     render() {
+        const navigate = this.props.navigation;
         return (
             <View style={{flex: 1}}>
-                {this.state.fullScreen ? <Text></Text> :
-                this.state.coordinates && this.state.coordinates.length > 0 ?
-                    <ViewPager initialPage={0} style={{flex: 8}}
+                <KeepAwake />
+                {!this.state.fullScreen &&
+                this.state.coordinates && this.state.coordinates.length > 0 &&
+                    <ViewPager initialPage={0} style={{height: 195/*flex: 8*/}}
                                onPageSelected={(e) => this.onPageSelected(e)}>
                         {this.state.coordinates.map((item, key) => {
                             return (
                                 <View key={key}>
                                     <View style={{flexDirection: 'row', margin: 15}}>
-                                        <View style={{flex: 1}}>
+                                        <View style={{flex: 1, justifyContent: 'center'}}>
                                             {this.state.videoLoading ?
                                                 <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
                                                     <ActivityIndicator size="large" color={Colors.primary}/>
                                                 </View> :
                                                 (this.state.video ?
-                                            <View style={{width: 150, height: 150}}>
-                                                <Video source={{uri: this.state.video}}
-                                                       ref={(ref) => {this.player = ref }}
-                                                       resizeMode="cover"
-                                                       paused={false}
-                                                       repeat={true}
-                                                       style={{width: '100%', height: '100%'}}
-                                                />
-                                            </View> :
-                                            <Image source={require('../assets/images/Audio.png')}
-                                                   style={{width: 150, height: 150}}/>)}
+                                                    <View style={{width: 150, height: 150}}>
+                                                        <TouchableOpacity onPress={() => {this.setState({videoPaused: !this.state.videoPaused})}} activeOpacity={0.9}>
+                                                            <Video source={{uri: this.state.video}}
+                                                                   ref={(ref) => {this.player = ref }}
+                                                                   resizeMode="cover"
+                                                                   paused={this.state.videoPaused}
+                                                                   repeat={true}
+                                                                   style={{width: '100%', height: '100%'}}
+                                                        /></TouchableOpacity>
+                                                    </View>
+                                                    :
+                                                    <View style={{width: 150, height: 150, borderWidth: 1, borderColor: Colors.border, borderRadius: 5, justifyContent: 'center', alignItems: 'center'}}>
+                                                        <TouchableOpacity onPress={() => {if (this.state.playBack) this._pauseAudio(); else this._playAudio();}}>
+                                                            <Image source={this.state.playBack ? require('../assets/images/Audio-Pause.png') : require('../assets/images/Audio-Play.png')}
+                                                                   style={{width: 135, height: 135 }}/>
+                                                        </TouchableOpacity>
+                                                    </View>)}
                                         </View>
                                         <View style={{flex: 1}}>
-                                            <Text style={styles.titleText} numberOfLines={1}>{this.state.title}</Text>
-                                            <Text style={styles.subtitleText}>{this.state.date} {this.state.time} {this.state.location}</Text>
+                                            <View style={{flex:1}}>
+                                                <Text style={styles.titleText} numberOfLines={1}>{this.state.title}</Text>
+                                            </View>
+                                            <View style={{flex:1, alignItems: 'flex-start'}}>
+                                                <Text style={styles.subtitleText}>{this.state.time}{this.state.date}{this.state.location}</Text>
+                                            </View>
                                             {/*<TouchableOpacity onPress={(rating) => this.ratingCompleted(rating)}>*/}
                                                 {/*<Image*/}
                                                     {/*source={this.state.rated ? require('../assets/images/Rated.png') : require('../assets/images/Rate.png')}*/}
                                                     {/*style={{width: 95, height: 11, alignSelf: 'center', margin: 18}}/>*/}
                                             {/*</TouchableOpacity>*/}
-                                            <View style={{flexDirection: 'row', justifyContent: 'space-around'}}>
+                                            <View style={{flex: 2, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
                                                 <TouchableOpacity onPress={() => { this.ratingCompleted(1) }}>
                                                     <Image source={this.state.rating === 1 ? require('../assets/images/liked.png') : require('../assets/images/like.png')} style={{width: 40, height: 40}} />
                                                 </TouchableOpacity>
@@ -476,16 +518,17 @@ export default class PlayHalfScreen extends React.Component {
                                                 </TouchableOpacity>
                                             </View>
                                             <View style={{
+                                                flex: 1,
                                                 flexDirection: 'row',
                                                 justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                margin: 5
+                                                alignItems: 'flex-end',
+                                                // paddingHorizontal: 5
                                             }}>
                                                 <TouchableOpacity onPress={() => {this.onShare();}} style={{marginTop: -2}}>
                                                     <Image source={require('../assets/images/Share.png')}
                                                            style={{width: 20, height: 20}}/>
                                                 </TouchableOpacity>
-                                                <TouchableOpacity onPress={() => {this.goFullScreen();}}>
+                                                <TouchableOpacity onPress={() => {this.beforeNavigate(); this.goFullScreen();}} style={{padding: 5}}>
                                                     <Image source={require('../assets/images/Cancel.png')}
                                                            style={{width: 12, height: 12}}/>
                                                 </TouchableOpacity>
@@ -494,18 +537,16 @@ export default class PlayHalfScreen extends React.Component {
                                     </View>
 
                                     <View style={{marginBottom: 5}}>
-                                        <TouchableOpacity onPress={() => {this.props.navigation.goBack();}}
+                                        <TouchableOpacity onPress={() => {this.beforeNavigate(); navigate.goBack();}}
                                                           style={{alignSelf: 'center'}} >
                                             <Image source={require('../assets/images/Rectangle-64.png')}
                                                    style={{width: 145, height: 10, borderRadius: 10}} />
                                         </TouchableOpacity>
                                     </View>
                                 </View>)})}
-                        </ViewPager> :
-
-                    <View style={{flex: 8, justifyContent: 'center', alignItems: 'center'}}><Text>No items in playlist</Text></View>
+                        </ViewPager>
                 }
-                <View style={{flex:17}}>
+                <View style={{flex: 1}}/* style={{flex:17}}*/>
                     <View style={styles.page}>
                         <View style={styles.container}>
                             <MapboxGL.MapView
@@ -537,7 +578,7 @@ export default class PlayHalfScreen extends React.Component {
                                     </TouchableOpacity>
                                     <TextInput
                                         style={[styles.textInput, {position: this.state.search ? 'absolute' : 'relative'}]}
-                                        placeholder="New Search"
+                                        placeholder="Explore the world here!"
                                         onChangeText={text => this.searchPlaces(text)}
                                         value={this.state.searchQuery}
                                     />
@@ -551,7 +592,7 @@ export default class PlayHalfScreen extends React.Component {
                                 <ScrollView style={[styles.placesContainer, {display: this.state.searchResult.length > 0 ? 'flex' : 'none', position: this.state.searchResult.length > 0 ? 'absolute' : 'relative'}]}>
                                     {this.state.searchResult.map((item, key) => {
                                         return  <TouchableOpacity key={key} style={styles.searchResultItem}
-                                                                  onPress={() => this.setCenterToResultItem(item.center[0], item.center[1])} >
+                                                                  onPress={() => this.setCenterToResultItem(item.id, item.center[0], item.center[1])} >
                                             <Text style={styles.searchResultItemText}>{item.place_name}</Text>
                                         </TouchableOpacity>;
                                     })}
@@ -559,13 +600,13 @@ export default class PlayHalfScreen extends React.Component {
                             }
 
                             <TouchableOpacity style={[styles.icon, styles.playIcon]}
-                                              onPress={() => this.props.navigation.navigate('Play', {coordinates: JSON.stringify(this.state.markers)})}>
+                                              onPress={() => {this.beforeNavigate(); navigate.navigate('Play', {coordinates: JSON.stringify(this.state.markers)})}}>
                                 <Image source={require('../assets/images/Play.png')}
                                        style={styles.image} />
                             </TouchableOpacity>
 
                             <TouchableOpacity style={[styles.icon, styles.pinIcon]}
-                                              onPress={() => this.props.navigation.navigate('DropPin')}>
+                                              onPress={() => {this.beforeNavigate(); navigate.navigate('DropPin')}}>
                                 <Image source={require('../assets/images/Pin_+.png')}
                                        style={styles.image} />
                             </TouchableOpacity>
@@ -581,12 +622,12 @@ const styles = {
     titleText: {
         color: '#666666',
         fontSize: 15,
-        margin: 5
+        // margin: 5
     },
     subtitleText: {
         color: '#666666',
         fontSize: 11,
-        margin: 5
+        // margin: 5
     },
     playContent: {
         height: 62,

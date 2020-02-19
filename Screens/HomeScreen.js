@@ -154,8 +154,10 @@ export default class HomeScreen extends React.Component {
     }
 
     gotoCurrentLocation = () => {
+        // Geolocation.requestAuthorization();
         Geolocation.getCurrentPosition(
             (position) => {
+                console.log("position", position);
                 this.setState({
                     mapCenter: {
                         lng: position.coords.longitude,
@@ -166,12 +168,13 @@ export default class HomeScreen extends React.Component {
                 this.getPins();
             },
             (error) => {
-                if (error.code === 5) // Location settings are not satisfied.
+                if (error.code === 5) { // Location settings are not satisfied.
                     Alert.alert("Permission Denied", "In order to have a better experience, Azurepin needs to access your location.");
+                    console.log("no location permission");
+                }
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
         );
-
     };
 
     async getCorners() {
@@ -208,13 +211,13 @@ export default class HomeScreen extends React.Component {
         });
     }
 
-    setCenterToResultItem(lng, lat) {
+    setCenterToResultItem(id, lng, lat) {
         this.setState({
             search: false,
             searchQuery: "",
             searchResult: [],
             mapCenter: {lng: lng, lat: lat},
-            mapZoomLevel: 5
+            mapZoomLevel: id.startsWith("country") ? 5 : 10
         });
     }
 
@@ -250,7 +253,7 @@ export default class HomeScreen extends React.Component {
                                style={[styles.image, {display: this.state.search ? 'none' : 'flex'}]} />
                     </TouchableOpacity>
 
-                    {this.state.search ?
+                    {this.state.search &&
                         <View style={styles.searchOpenIcon}>
                             <TouchableOpacity onPress={() => {this.setState({search: false, searchResult: []})}}>
                                 <Image source={require('../assets/images/Searchbar-close.png')}
@@ -266,7 +269,7 @@ export default class HomeScreen extends React.Component {
                                 <Image source={require('../assets/images/Blue-Location.png')}
                                        style={{width: 20, height: 19, marginRight: 20}}/>
                             </TouchableOpacity>
-                        </View> : <View></View>
+                        </View>
                     }
 
                     {this.state.searchResult &&
@@ -274,7 +277,7 @@ export default class HomeScreen extends React.Component {
                             {this.state.searchResult.map((item, key) => {
                                 return  <TouchableOpacity key={key}
                                                           style={styles.searchResultItem}
-                                                          onPress={() => this.setCenterToResultItem(item.center[0], item.center[1])} >
+                                                          onPress={() => this.setCenterToResultItem(item.id, item.center[0], item.center[1])} >
                                     <Text style={styles.searchResultItemText}>{item.place_name}</Text>
                                 </TouchableOpacity>;
                             })}
